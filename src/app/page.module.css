@@ -108,6 +108,12 @@ a.secondary {
   flex-shrink: 0;
 }
 
+.mapContainer {
+  width: 100vw; /* Full width */
+  height: 100vh; /* Full viewport height */
+}
+
+
 /* Enable hover only on non-touch devices */
 @media (hover: hover) and (pointer: fine) {
   a.primary:hover {

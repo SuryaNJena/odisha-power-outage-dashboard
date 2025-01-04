@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/scrappedData
+/public/Archive
+/public/Odisha
+/web-scrapper
