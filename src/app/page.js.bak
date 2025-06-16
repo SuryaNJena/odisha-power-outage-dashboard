@@ -45,7 +45,7 @@ const MapComponent = () => {
       .append('pattern')
         .attr('id', 'dots')
         .attr('patternUnits', 'userSpaceOnUse')
-        .attr('width', 6)  
+        .attr('width', 6)  // Reduced pattern size for higher density
         .attr('height', 6);
     
     // Black background for the pattern
@@ -60,7 +60,7 @@ const MapComponent = () => {
     pattern.append('circle')
       .attr('cx', 6)
       .attr('cy', 6)
-      .attr('r', 1.5)  
+      .attr('r', 1.5)  // Base dot size
       .attr('fill', 'white')
       .attr('filter', 'url(#glow)');
 
@@ -69,7 +69,7 @@ const MapComponent = () => {
       .append('pattern')
         .attr('id', 'hover-dots')
         .attr('patternUnits', 'userSpaceOnUse')
-        .attr('width', 6)  
+        .attr('width', 6)  // Reduced pattern size for higher density
         .attr('height', 6);
 
     hoverPattern.append('rect')
@@ -82,7 +82,7 @@ const MapComponent = () => {
     hoverPattern.append('circle')
       .attr('cx', 6)
       .attr('cy', 6)
-      .attr('r', 2.5)  
+      .attr('r', 2.5)  // Larger dot size
       .attr('fill', 'white')
       .attr('filter', 'url(#glow)');
     
@@ -125,16 +125,18 @@ const MapComponent = () => {
       .style('display', 'flex')
       .style('justify-content', 'center')
       .style('padding', '10px')
-      .style('overflow-x', 'auto') 
-      .style('white-space', 'nowrap') 
+       .style('overflow-x', 'auto') // Allows horizontal scrolling
+      .style('white-space', 'nowrap') // Keeps elements in a single line
       .style('background-color', 'rgba(0, 0, 0, 0.7)')
       .style('color', 'white')
       .style('text-align', 'center')
       .style('font-size', '20px')
       .style('font-weight', 'bold')
+      // .style('visibility', 'hidden')
       .style('z-index', 1000);
 
-    nameBarRef.current = nameBar.node(); 
+    nameBarRef.current = nameBar.node(); // Set the ref
+
 
     // scale the map to fit screen so find the min and max boundary
     let overallBounds;
@@ -199,18 +201,11 @@ const MapComponent = () => {
     d3.select(event.target)
       .transition()
       .duration(300)
-      .attr('fill', 'url(#hover-dots)')
+      .attr('fill', 'url(#hover-dots)')  // Switch to hover pattern
       .attr('stroke', 'white')
       .attr('stroke-width', 2)
       .attr('stroke-opacity', 0.8)
       .attr('opacity', 1);
-    
-    // Update name bar with hover district name
-    if (!nameBarRef.current) return;
-    nameBarRef.current.style.visibility = 'visible';
-    const name = d?.properties?.name || d?.properties?.Name || d?.properties?.DIST_NAME || d?.properties?.Dist_Name;
-    nameBarRef.current.textContent = name;
-    console.log("Hovering over:", name);
   };
 
   const handleMouseOut = (event, d) => {
@@ -218,18 +213,10 @@ const MapComponent = () => {
     d3.select(event.target)
       .transition()
       .duration(300)
-      .attr('fill', 'url(#dots)')
+      .attr('fill', 'url(#dots)')  // Switch back to normal pattern
       .attr('stroke', isSelected ? 'red' : 'none')
       .attr('stroke-width', isSelected ? 3 : 0)
       .attr('opacity', isSelected ? 1 : 0.8);
-    
-    // If no district is selected, clear the name bar
-    if (!isSelected && selectedFeatures.length === 0) {
-      nameBarRef.current.textContent = "";
-      nameBarRef.current.style.visibility = 'hidden';
-    }
-    console.log("Mouse out from:", d?.properties?.name || d?.properties?.Name || d?.properties?.DIST_NAME || d?.properties?.Dist_Name);
-  };
 
   const handleClick = (event, d) => {
     const isSelected = selectedFeatures.includes(d);
@@ -244,6 +231,7 @@ const MapComponent = () => {
     if (!nameBarRef.current) return;
     if (selectedFeatures.length === 0) {
       nameBarRef.current.textContent = "";
+      // nameBarRef.current.style.visibility = 'hidden';
       return;
     }
     nameBarRef.current.style.visibility = 'visible';
