@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import * as d3 from 'd3';
 import * as topojson from 'topojson-client';
+import Navigation from './navigation';
 
 const MapComponent = () => {
   const mapRef = useRef(null);
@@ -271,3 +272,5 @@ const MapComponent = () => {
 };
 
 export default MapComponent;
+
+export { Navigation };

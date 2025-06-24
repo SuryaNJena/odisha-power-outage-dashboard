@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "echarts": "^5.4.3",
+    "echarts-for-react": "^3.0.2",
     "d3": "^7.9.0",
     "d3-geo": "^3.1.1",
     "d3-geo-polygon": "^2.0.1",
