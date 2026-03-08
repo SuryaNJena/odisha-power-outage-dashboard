@@ -48,7 +48,8 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add scrappedData/ public/outage_data.json
+          # Only commit the processed JSON — scrappedData/ is gitignored (CSVs are ephemeral)
+          git add public/outage_data.json
           git diff --cached --quiet || git commit -m "chore: update outage data [skip ci]"
           git push
         # [skip ci] prevents a new workflow trigger on the data-only commit
