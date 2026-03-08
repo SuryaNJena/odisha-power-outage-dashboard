@@ -1,276 +1,295 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import * as topojson from 'topojson-client';
 import Navigation from './navigation';
+import { MAP_URL, DATA_URL } from './config';
+
+// Color scale: green (few) → orange → red (many)
+function getColor(value, min, max) {
+  if (max === min) return '#22c55e';
+  const t = (value - min) / (max - min);
+  if (t < 0.33) {
+    // green → yellow
+    const s = t / 0.33;
+    const r = Math.round(34 + s * (251 - 34));
+    const g = Math.round(197 - s * (197 - 191));
+    const b = Math.round(94 - s * 94);
+    return `rgb(${r},${g},${b})`;
+  } else if (t < 0.66) {
+    // yellow → orange
+    const s = (t - 0.33) / 0.33;
+    const r = Math.round(251 + s * (249 - 251));
+    const g = Math.round(191 - s * (191 - 115));
+    const b = 0;
+    return `rgb(${r},${g},${b})`;
+  } else {
+    // orange → red
+    const s = (t - 0.66) / 0.34;
+    const r = Math.round(249 - s * (249 - 220));
+    const g = Math.round(115 - s * 115);
+    const b = 0;
+    return `rgb(${r},${g},${b})`;
+  }
+}
 
 const MapComponent = () => {
   const mapRef = useRef(null);
-  const nameBarRef = useRef(null);
-
   const [topoJsonData, setTopoJsonData] = useState(null);
-  const [selectedFeatures, setSelectedFeatures] = useState([]);
+  const [districtData, setDistrictData] = useState({}); // { districtName: count }
+  const [stats, setStats] = useState({ total: 0, max: '', maxVal: 0 });
+  const [tooltip, setTooltip] = useState({ visible: false, name: '', value: 0, x: 0, y: 0 });
+  const [loading, setLoading] = useState(true);
 
+  // Load TopoJSON and backend data in parallel
   useEffect(() => {
-    const loadTopoJson = async () => {
+    const loadAll = async () => {
       try {
-        const response = await fetch("/Odisha.json");
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        const data = await response.json();
-        console.log("Fetched TopoJSON data:", data);
-        setTopoJsonData(data);
-      } catch (error) {
-        console.error("Error fetching or parsing topojson data:", error);
+        const [topoRes, dataRes] = await Promise.all([
+          fetch(MAP_URL),
+          fetch(DATA_URL),
+        ]);
+        const topo = await topoRes.json();
+        const data = await dataRes.json();
+
+        const distMap = {};
+        let total = 0;
+        let maxVal = 0;
+        let maxName = '';
+        (data.districts || []).forEach(({ name, value }) => {
+          distMap[name.toLowerCase()] = value;
+          total += value;
+          if (value > maxVal) { maxVal = value; maxName = name; }
+        });
+
+        setDistrictData(distMap);
+        setStats({ total, max: maxName, maxVal });
+        setTopoJsonData(topo);
+        setLoading(false);
+      } catch (err) {
+        console.error('Error loading data:', err);
+        setLoading(false);
       }
     };
-    loadTopoJson();
+    loadAll();
   }, []);
 
   useEffect(() => {
-    // don't render without data or ref
     if (!topoJsonData || !mapRef.current) return;
 
-    // occupy the full screen
-    const width = mapRef.current.clientWidth;
-    const height = mapRef.current.clientHeight;
+    const container = mapRef.current;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
 
-    // Create a black background
-    const svg = d3.select(mapRef.current).selectAll('svg').data([null]).join('svg')
+    // Clear previous SVG
+    d3.select(container).selectAll('svg').remove();
+
+    const svg = d3.select(container)
+      .append('svg')
       .attr('width', width)
       .attr('height', height)
-      .style('background-color', 'black');
-    
-    // Create white dots pattern with higher density
-    var pattern = svg.append('defs')
-      .append('pattern')
-        .attr('id', 'dots')
+      .style('background-color', '#050510');
+
+    // Defs: dots pattern + glow
+    const defs = svg.append('defs');
+
+    const makeDots = (id, r, spacing) => {
+      const p = defs.append('pattern')
+        .attr('id', id)
         .attr('patternUnits', 'userSpaceOnUse')
-        .attr('width', 6)  
-        .attr('height', 6);
-    
-    // Black background for the pattern
-    pattern.append('rect')
-      .attr('x', 0)
-      .attr('y', 0)
-      .attr('width', 12)
-      .attr('height', 12)
-      .attr('fill', 'black');
-    
-    // White dots with glow effect
-    pattern.append('circle')
-      .attr('cx', 6)
-      .attr('cy', 6)
-      .attr('r', 1.5)  
-      .attr('fill', 'white')
-      .attr('filter', 'url(#glow)');
+        .attr('width', spacing)
+        .attr('height', spacing);
+      p.append('rect').attr('width', spacing).attr('height', spacing).attr('fill', 'transparent');
+      p.append('circle').attr('cx', spacing / 2).attr('cy', spacing / 2).attr('r', r)
+        .attr('fill', 'rgba(255,255,255,0.7)').attr('filter', 'url(#glow)');
+      return p;
+    };
 
-    // Create hover pattern with higher density
-    var hoverPattern = svg.append('defs')
-      .append('pattern')
-        .attr('id', 'hover-dots')
-        .attr('patternUnits', 'userSpaceOnUse')
-        .attr('width', 6)  
-        .attr('height', 6);
+    makeDots('dots', 1.2, 5);
+    makeDots('hover-dots', 1.8, 4);
 
-    hoverPattern.append('rect')
-      .attr('x', 0)
-      .attr('y', 0)
-      .attr('width', 12)
-      .attr('height', 12)
-      .attr('fill', 'black');
+    const filter = defs.append('filter').attr('id', 'glow');
+    filter.append('feGaussianBlur').attr('stdDeviation', '1').attr('result', 'coloredBlur');
+    const feMerge = filter.append('feMerge');
+    feMerge.append('feMergeNode').attr('in', 'coloredBlur');
+    feMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
-    hoverPattern.append('circle')
-      .attr('cx', 6)
-      .attr('cy', 6)
-      .attr('r', 2.5)  
-      .attr('fill', 'white')
-      .attr('filter', 'url(#glow)');
-    
-    // Add glow filter
-    svg.append('defs')
-      .append('filter')
-      .attr('id', 'glow')
-      .append('feGaussianBlur')
-      .attr('stdDeviation', '1')
-      .attr('result', 'coloredBlur');
-    
-    svg.select('#glow')
-      .append('feMerge')
-      .selectAll('feMergeNode')
-      .data(['coloredBlur', 'SourceGraphic'])
-      .enter()
-      .append('feMergeNode')
-      .attr('in', function(d) { return d; });
-
-    d3.select(mapRef.current).selectAll('.title-bar').data([null]).join('div')
-      .attr('class', 'title-bar')
-      .style('position', 'absolute')
-      .style('top', '0')
-      .style('width', '100%')
-      .style('display', 'flex')
-      .style('justify-content', 'center')
-      .style('padding', '10px')
-      .style('background-color', 'rgba(0, 0, 0, 0.7)')
-      .style('color', 'white')
-      .style('text-align', 'center')
-      .style('font-size', '24px')
-      .style('font-weight', 'bold')
-      .text("Odisha Live Power Outage Dashboard");
-
-    const nameBar = d3.select(mapRef.current).selectAll('.name-bar').data([null]).join('div')
-      .attr('class', 'name-bar')
-      .style('position', 'absolute')
-      .style('bottom', '0')
-      .style('width', '100%')
-      .style('display', 'flex')
-      .style('justify-content', 'center')
-      .style('padding', '10px')
-      .style('overflow-x', 'auto') 
-      .style('white-space', 'nowrap') 
-      .style('background-color', 'rgba(0, 0, 0, 0.7)')
-      .style('color', 'white')
-      .style('text-align', 'center')
-      .style('font-size', '20px')
-      .style('font-weight', 'bold')
-      .style('z-index', 1000);
-
-    nameBarRef.current = nameBar.node(); 
-
-    // scale the map to fit screen so find the min and max boundary
-    let overallBounds;
+    // Collect all features
+    const allFeatures = [];
     for (const key in topoJsonData.objects) {
       const geojson = topojson.feature(topoJsonData, topoJsonData.objects[key]);
-      const bounds = d3.geoBounds(geojson);
-      overallBounds = overallBounds ? [
-        [Math.min(overallBounds[0][0], bounds[0][0]), Math.min(overallBounds[0][1], bounds[0][1])],
-        [Math.max(overallBounds[1][0], bounds[1][0]), Math.max(overallBounds[1][1], bounds[1][1])]
-      ] : bounds;
+      geojson.features.forEach(f => allFeatures.push(f));
     }
 
-    if (overallBounds) {
-      const [[minLon, minLat], [maxLon, maxLat]] = overallBounds;
-      const geoWidth = maxLon - minLon;
-      const geoHeight = maxLat - minLat;
-      const scaleX = width / geoWidth;
-      const scaleY = height / geoHeight;
-      const scale = Math.min(scaleX, scaleY) * 0.80;
-      const translateX = (width - geoWidth * scale) / 2;
-      const translateY = (height - geoHeight * scale) / 2;
-
-      for (const objectName in topoJsonData.objects) {
-        const geojsonData = topojson.feature(topoJsonData, topoJsonData.objects[objectName]);
-        svg.selectAll(`.layer-${objectName.replace(/[^a-zA-Z0-9]/g, '_')}`)
-          .data(geojsonData.features)
-          .join('path')
-          .attr('class', `layer-${objectName.replace(/[^a-zA-Z0-9]/g, '_')}`)
-          .attr('d', (d) => d3.line()(d.geometry.coordinates[0].map(coord => [
-            (coord[0] - minLon) * scale + translateX,
-            (maxLat - coord[1]) * scale + translateY
-          ])))
-          .attr('fill', 'url(#dots)')
-          .attr('opacity', 0.8)
-          .on('mouseover', handleMouseOver)
-          .on('mouseout', handleMouseOut)
-          .on('click', handleClick);
-      }
-
-      svg.selectAll('path')
-        .each(function(d) {
-          const isSelected = selectedFeatures.includes(d);
-           d3.select(this)
-            .attr('fill', isSelected ? 'red' : 'url(#dots)');
-        })
-          .sort((a, b) => {
-          const aSelected = selectedFeatures.includes(a);
-          const bSelected = selectedFeatures.includes(b);
-          if (aSelected) return 1;
-          if (bSelected) return -1;
-          return -1;
-        });
-    }
-  }, [topoJsonData, selectedFeatures]);
-
-  // Update name bar whenever selectedFeatures changes
-  useEffect(() => {
-    updateNameBar();
-  }, [selectedFeatures]);
-
-  const handleMouseOver = (event, d) => {
-    d3.select(event.target)
-      .transition()
-      .duration(300)
-      .attr('fill', 'url(#hover-dots)')
-      .attr('stroke', 'white')
-      .attr('stroke-width', 2)
-      .attr('stroke-opacity', 0.8)
-      .attr('opacity', 1);
-    
-    // Update name bar with hover district name
-    if (!nameBarRef.current) return;
-    nameBarRef.current.style.visibility = 'visible';
-    const name = d?.properties?.name || d?.properties?.Name || d?.properties?.DIST_NAME || d?.properties?.Dist_Name;
-    nameBarRef.current.textContent = name;
-    console.log("Hovering over:", name);
-  };
-
-  const handleMouseOut = (event, d) => {
-    const isSelected = selectedFeatures.includes(d);
-    d3.select(event.target)
-      .transition()
-      .duration(300)
-      .attr('fill', 'url(#dots)')
-      .attr('stroke', isSelected ? 'red' : 'none')
-      .attr('stroke-width', isSelected ? 3 : 0)
-      .attr('opacity', isSelected ? 1 : 0.8);
-    
-    // If no district is selected, clear the name bar
-    if (!isSelected && selectedFeatures.length === 0) {
-      nameBarRef.current.textContent = "";
-      nameBarRef.current.style.visibility = 'hidden';
-    }
-    console.log("Mouse out from:", d?.properties?.name || d?.properties?.Name || d?.properties?.DIST_NAME || d?.properties?.Dist_Name);
-  };
-
-  const handleClick = (event, d) => {
-    const isSelected = selectedFeatures.includes(d);
-    if (isSelected) {
-      setSelectedFeatures(selectedFeatures.filter(feature => feature !== d));
-    } else {
-      setSelectedFeatures([d]);
-    }
-  };
-
-  const updateNameBar = () => {
-    if (!nameBarRef.current) return;
-    if (selectedFeatures.length === 0) {
-      nameBarRef.current.textContent = "";
-      return;
-    }
-    nameBarRef.current.style.visibility = 'visible';
-    const names = selectedFeatures.map(feature => {
-      return feature?.properties?.name || feature?.properties?.Name || feature?.properties?.DIST_NAME || feature?.properties?.Dist_Name;
+    // Fit projection
+    const projection = d3.geoMercator().fitSize([width, height - 52], {
+      type: 'FeatureCollection',
+      features: allFeatures,
     });
-    nameBarRef.current.textContent = names.join(", ");
-    console.log("Selected features:", selectedFeatures);
-    console.log(names.join(", "));
-  };
+    const path = d3.geoPath().projection(projection);
+
+    // Outage values for color scale
+    const values = Object.values(districtData);
+    const minVal = values.length ? Math.min(...values) : 0;
+    const maxValNum = values.length ? Math.max(...values) : 1;
+
+    function getDistrictName(d) {
+      const p = d.properties || {};
+      return p.NAME_2 || p.name || p.Name || p.DIST_NAME || p.Dist_Name || p.district || '';
+    }
+
+    function getOutages(d) {
+      const name = getDistrictName(d).toLowerCase();
+      return districtData[name] || 0;
+    }
+
+    // Draw districts
+    const paths = svg.selectAll('path.district')
+      .data(allFeatures)
+      .join('path')
+      .attr('class', 'district')
+      .attr('d', path)
+      .attr('fill', d => {
+        const v = getOutages(d);
+        if (v === 0) return 'url(#dots)';
+        return getColor(v, minVal, maxValNum);
+      })
+      .attr('opacity', 0.85)
+      .attr('stroke', 'rgba(255,255,255,0.15)')
+      .attr('stroke-width', 0.5)
+      .style('cursor', 'pointer');
+
+    paths
+      .on('mouseover', function (event, d) {
+        const name = getDistrictName(d);
+        const value = getOutages(d);
+        d3.select(this)
+          .attr('stroke', 'rgba(255,255,255,0.8)')
+          .attr('stroke-width', 1.5)
+          .attr('opacity', 1);
+        setTooltip({ visible: true, name, value, x: event.clientX, y: event.clientY });
+      })
+      .on('mousemove', function (event) {
+        setTooltip(prev => ({ ...prev, x: event.clientX, y: event.clientY }));
+      })
+      .on('mouseout', function (event, d) {
+        d3.select(this)
+          .attr('stroke', 'rgba(255,255,255,0.15)')
+          .attr('stroke-width', 0.5)
+          .attr('opacity', 0.85);
+        setTooltip(prev => ({ ...prev, visible: false }));
+      });
+
+  }, [topoJsonData, districtData]);
 
   return (
-    <div
-      style={{
-        width: '100vw',
-        height: '100vh',
-        overflow: 'hidden',
-        position: 'relative',
-      }}
-    >
-      <div ref={mapRef} style={{ width: '100%', height: '100%'}} />
-      <div ref={nameBarRef} />
+    <div style={{ width: '100vw', height: '100vh', overflow: 'hidden', position: 'relative', background: '#050510' }}>
+      <Navigation />
+
+      {/* Map area */}
+      <div
+        ref={mapRef}
+        style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}
+      />
+
+      {/* Loading overlay */}
+      {loading && (
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(5,5,16,0.9)', zIndex: 100,
+        }}>
+          <div style={{ textAlign: 'center', color: '#ff6432' }}>
+            <div style={{ fontSize: 32, marginBottom: 12 }}>⚡</div>
+            <div style={{ fontSize: 14, letterSpacing: '0.1em' }}>Loading outage data…</div>
+          </div>
+        </div>
+      )}
+
+      {/* Title */}
+      <div style={{
+        position: 'absolute', top: 52, left: 0, right: 0,
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        padding: '8px 16px',
+        background: 'linear-gradient(180deg,rgba(5,5,16,0.95) 0%,transparent 100%)',
+        pointerEvents: 'none',
+        zIndex: 500,
+      }}>
+        <h1 style={{
+          margin: 0, color: '#fff', fontSize: '18px', fontWeight: 700,
+          letterSpacing: '0.06em', textShadow: '0 0 20px rgba(255,100,50,0.5)',
+        }}>
+          Odisha Live Power Outage Dashboard
+        </h1>
+      </div>
+
+      {/* Stats bar */}
+      {!loading && stats.total > 0 && (
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          display: 'flex', justifyContent: 'center', gap: '3rem',
+          padding: '10px 20px',
+          background: 'linear-gradient(0deg,rgba(5,5,16,0.97) 0%,transparent 100%)',
+          zIndex: 500,
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#ff6432', fontSize: '20px', fontWeight: 700 }}>{stats.total}</div>
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', letterSpacing: '0.1em' }}>TOTAL OUTAGES</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#ff6432', fontSize: '20px', fontWeight: 700 }}>{stats.max}</div>
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', letterSpacing: '0.1em' }}>MOST AFFECTED</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ color: '#ff6432', fontSize: '20px', fontWeight: 700 }}>{stats.maxVal}</div>
+            <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', letterSpacing: '0.1em' }}>OUTAGES IN {stats.max?.toUpperCase()}</div>
+          </div>
+        </div>
+      )}
+
+      {/* Legend */}
+      {!loading && (
+        <div style={{
+          position: 'absolute', bottom: 60, right: 20,
+          background: 'rgba(10,10,20,0.85)', border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: 8, padding: '10px 14px', zIndex: 500,
+        }}>
+          <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px', letterSpacing: '0.1em', marginBottom: 6 }}>OUTAGES</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>Few</span>
+            <div style={{
+              width: 80, height: 10, borderRadius: 4,
+              background: 'linear-gradient(90deg,#22c55e,#fbbf24,#dc2626)',
+            }} />
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>Many</span>
+          </div>
+        </div>
+      )}
+
+      {/* Tooltip */}
+      {tooltip.visible && (
+        <div style={{
+          position: 'fixed',
+          left: tooltip.x + 12,
+          top: tooltip.y - 10,
+          background: 'rgba(10,10,20,0.95)',
+          border: '1px solid rgba(255,100,50,0.4)',
+          borderRadius: 6,
+          padding: '6px 12px',
+          pointerEvents: 'none',
+          zIndex: 3000,
+          color: '#fff',
+          fontSize: '13px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+        }}>
+          <div style={{ fontWeight: 600 }}>{tooltip.name || '(Unknown district)'}</div>
+          <div style={{ color: '#ff6432', fontSize: '12px', marginTop: 2 }}>
+            {tooltip.value} outage{tooltip.value !== 1 ? 's' : ''}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default MapComponent;
-
-export { Navigation };
