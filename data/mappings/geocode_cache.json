@@ -1538,5 +1538,225 @@
     "lat": 20.0538149,
     "lon": 85.5023308,
     "display": "Khordha, Odisha, India"
+  },
+  "NAKHARA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BALIKUDA|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GADA AMARPRASAD|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "ADASPUR|Cuttack": {
+    "lat": 20.220872,
+    "lon": 86.0109498,
+    "display": "PHC, Adaspur, SH60, Olatapur, Cuttack, Odisha, 754011, India"
+  },
+  "SANKARPUR|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHHANAGIRI|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GUNDICHAPADA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NIMAPARA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "AULGUM|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DASABATIA|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BIDANASI (GSS)|Cuttack": {
+    "lat": 20.4820141,
+    "lon": 85.8408058,
+    "display": "Bidanasi Football Ground, Lane 3, Cuttack, Cuttack (M.Corp.) P.S, Cuttack, Odisha, 753001, India"
+  },
+  "DOVALO|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SOVA|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NIALI|Cuttack": {
+    "lat": 20.1454205,
+    "lon": 86.0946628,
+    "display": "Niali, Cuttack, Odisha, India"
+  },
+  "PARADEEP (GSS)|Jagatsinghpur": {
+    "lat": 20.2599289,
+    "lon": 86.5871491,
+    "display": "Paradeep IOCL Refinery Hospital, IOCL Paradip Refinery Tankfarm, Paradeep, Abhyachandpur, Jagatsinghapur, Odisha, India"
+  },
+  "PRADHAN SAHI|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NISCHINTAKOILI|Cuttack": {
+    "lat": 20.4799892,
+    "lon": 86.2145166,
+    "display": "Nischintakoili, Cuttack, Odisha, India"
+  },
+  "BANTALA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CS PUR-1|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BADACHANA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "INDUPUR|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "HANUMANPUR|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "HINDOL|Dhenkanal": {
+    "lat": 20.6381058,
+    "lon": 85.2128553,
+    "display": "Hindol, Dhenkanal, Odisha, 759022, India"
+  },
+  "KUDANAGIRI|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NABARKANAN|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JAGATSINGHPUR (GSS)|Jagatsinghpur": {
+    "lat": 20.2327324,
+    "lon": 86.1624628,
+    "display": "Jagatsinghpur Hospital, SVM College Road, Jagatsinghpur, Jagatsinghapur, Odisha, 754103, India"
+  },
+  "JOGADHARI|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "RANASINGHPUR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KENDRAPARA|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TIRTOL|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BOINDA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHHAPALI|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KAMAKHYANAGAR (GSS)|Dhenkanal": {
+    "lat": 20.9329215,
+    "lon": 85.5416343,
+    "display": "Kamakhyanagar, Kamakshyanagar, Dhenkanal, Odisha, 759018, India"
+  },
+  "KHAJURIAKATA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KHANDAPADA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "MANCHESWAR-A (GSS)|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KESURA (GSS)|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SIULA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SOMAPUR|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "LAXMISAGAR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "XAVIER|Khordha": {
+    "lat": 20.3086099,
+    "lon": 85.819474,
+    "display": "Xavier Institute of Management, Nandankanan Road, Ward 16, North Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751013, India"
+  },
+  "KALIAPANI|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PALLAHARA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KANPUR|Cuttack": {
+    "lat": 20.4608716,
+    "lon": 85.1757451,
+    "display": "Kanpur, Cuttack, Odisha, India"
   }
 }
