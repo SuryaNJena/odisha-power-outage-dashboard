@@ -1,0 +1,1542 @@
+{
+  "INFOCITY -II GIS (GSS)|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GANIA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KALINGA|Cuttack": {
+    "lat": 20.5283177,
+    "lon": 85.9108588,
+    "display": "Kalinga Public School, NH55, Choudwar, Cuttack, Odisha, 754025, India"
+  },
+  "SAILASREE VIHAR 2|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "MANIA (GSS)|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TANGI|Cuttack": {
+    "lat": 20.6006508,
+    "lon": 85.9837983,
+    "display": "Tangi, Cuttack, Odisha, 754022, India"
+  },
+  "NAHARKANTA|Khordha": {
+    "lat": 20.3218438,
+    "lon": 85.8789597,
+    "display": "Naharkanta-Haridaspur Samili Road, Ward 4, North Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751025, India"
+  },
+  "KALYANI NAGAR|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GODA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SAKHIGOPAL|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KEYARBANK|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BANAMALIPUR ODSSP|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TIRTOL (GSS)|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BADAKERA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JAHARA BARIMUL (D.K.BHOLO)|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JIRIDAMALI|Dhenkanal": {
+    "lat": 20.932121,
+    "lon": 85.5603864,
+    "display": "Jiridamali, Kamakshyanagar, Dhenkanal, Odisha, 759018, India"
+  },
+  "GOUDAGOAN|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "LUNA|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "RANPUR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BADHI|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BANGURIGAON|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KOTHAPADA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JARAPADA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "ATHAGARH|Cuttack": {
+    "lat": 20.516145,
+    "lon": 85.6271159,
+    "display": "Athagarh, Athagad, Cuttack, Odisha, India"
+  },
+  "DANPUR|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "MAHANGA|Cuttack": {
+    "lat": 20.5725183,
+    "lon": 86.1874841,
+    "display": "Mahanga, Cuttack, Odisha, India"
+  },
+  "PARADEEPGARH|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BALAKATI|Khordha": {
+    "lat": 20.2033661,
+    "lon": 85.8685601,
+    "display": "CHC, Balakati, Bhubaneswar Puri Highway, Bhubaneswar, Bhubaneswar (M.Corp.), Khordha, Odisha, 752100, India"
+  },
+  "BADAMBADI|Cuttack": {
+    "lat": 20.4584148,
+    "lon": 85.8767936,
+    "display": "Badambadi, Cuttack, Cuttack (M.Corp.) P.S, Cuttack, Odisha, 753001, India"
+  },
+  "KANAKPUR ODSSP|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BAHUGRAM-2|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BADAGADA GIS|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "THAURI|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHAINPAL (GSS)|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BAHUGRAM-1|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NARASINGHPUR (GSS)|Cuttack": {
+    "lat": 20.5132535,
+    "lon": 85.019126,
+    "display": "Narasinghpur, Cuttack, Odisha, 754032, India"
+  },
+  "SUNADEIMUNDIA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NAYAPALLI|Khordha": {
+    "lat": 20.2831912,
+    "lon": 85.8186698,
+    "display": "Nayapalli, Ward 37, South West Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751012, India"
+  },
+  "BADADIA|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KENDRAPADA (GSS)|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GOP|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KONARK (GSS)|Khordha": {
+    "lat": 20.1669243,
+    "lon": 85.6101364,
+    "display": "Konark Nagar, NH Colony, Khurdha Municipality Boundary, Khordha, Odisha, 752055, India"
+  },
+  "ASURESWAR|Cuttack": {
+    "lat": 20.4753671,
+    "lon": 86.2537962,
+    "display": "PHC, Asureswar, SH9A, Nischintakoili, Cuttack, Odisha, 754207, India"
+  },
+  "GOTHAPATNA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BHARATPUR|Khordha": {
+    "lat": 20.3134805,
+    "lon": 85.7933239,
+    "display": "Bharatpur Forest-Lungs of Bhubaneswar, South West Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, India"
+  },
+  "BHIMATANGI|Khordha": {
+    "lat": 20.2371751,
+    "lon": 85.8209836,
+    "display": "Bhimeswar Park, Bhimatangi Square, Ward 61, Bhubaneswar, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751002, India"
+  },
+  "SARANDA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHOUDWAR|Cuttack": {
+    "lat": 20.6007612,
+    "lon": 85.8912043,
+    "display": "Choudwar, Cuttack, Odisha, India"
+  },
+  "SRIRAM NAGAR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DHOBANINALA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SALIPUR|Cuttack": {
+    "lat": 20.4794306,
+    "lon": 86.1065223,
+    "display": "salipur, kuanpal road, Salepur, Cuttack, Odisha, 754202, India"
+  },
+  "DRDA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NEW BARANGA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NARSINGHPUR|Cuttack": {
+    "lat": 20.4834228,
+    "lon": 85.8598839,
+    "display": "Narsinghpur Plaza, Ring Road, Barabati Killa, Cuttack, Cuttack (M.Corp.) P.S, Cuttack, Odisha, 753001, India"
+  },
+  "HEMSURPADA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "OIL MILL|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JAPAKUDA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SISHUBHAWAN|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JATANI|Khordha": {
+    "lat": 20.1617378,
+    "lon": 85.7052429,
+    "display": "Jatani, Khordha, Odisha, 752050, India"
+  },
+  "NAKCHI|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JAGATSINGHPUR|Jagatsinghpur": {
+    "lat": 20.2327324,
+    "lon": 86.1624628,
+    "display": "Jagatsinghpur Hospital, SVM College Road, Jagatsinghpur, Jagatsinghapur, Odisha, 754103, India"
+  },
+  "ARGUL(IIT) (GSS)|Khordha": {
+    "lat": 20.1242439,
+    "lon": 85.6706386,
+    "display": "Argul, Delang - Khurdha Road, Jatani, Khordha, Odisha, India"
+  },
+  "COLLEGE|Dhenkanal": {
+    "lat": 20.6393895,
+    "lon": 85.5828192,
+    "display": "Synergy College Road, Banamaliprasad, Dhenkanal Sadar, Dhenkanal, Odisha, 759001, India"
+  },
+  "TALABANIA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SHANTIPALLI|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KONARK|Khordha": {
+    "lat": 20.1669243,
+    "lon": 85.6101364,
+    "display": "Konark Nagar, NH Colony, Khurdha Municipality Boundary, Khordha, Odisha, 752055, India"
+  },
+  "PARICHHAL|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KANKADAHADA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DASPALLA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "MACHHIPADA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KALINGA NAGAR|Khordha": {
+    "lat": 20.2680426,
+    "lon": 85.7623093,
+    "display": "K7, Kalinga Nagar, Ward 23, South West Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, India"
+  },
+  "ATHAMALIK|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SARANKUL|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "MULAPADIA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KAMAKHYANAGAR|Dhenkanal": {
+    "lat": 20.9329215,
+    "lon": 85.5416343,
+    "display": "Kamakhyanagar, Kamakshyanagar, Dhenkanal, Odisha, 759018, India"
+  },
+  "SAINIK SCHOOL|Khordha": {
+    "lat": 20.3137609,
+    "lon": 85.8397384,
+    "display": "Sainik School Bhubaneswar, Sachivalaya Marg, Acharya Vihar Square, Ward 12, North Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751005, India"
+  },
+  "KHANDAGIRI|Khordha": {
+    "lat": 20.2368064,
+    "lon": 85.7727438,
+    "display": "Khandagiri, Khordha, Odisha, 751015, India"
+  },
+  "DANDIPUR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "ANKULAPADAR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "HARIPUR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "ATODA (GSS)|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DAKHINAKALI|Dhenkanal": {
+    "lat": 20.6542425,
+    "lon": 85.587891,
+    "display": "Reserve Police Lane Dakhinakali, Dhenkanal, Dhenkanal Sadar, Dhenkanal, Odisha, 759001, India"
+  },
+  "KESURA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GODIPADA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "UNIT-6|Khordha": {
+    "lat": 20.2648301,
+    "lon": 85.8233948,
+    "display": "Unit-6, Ward 46, South West Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751009, India"
+  },
+  "BEGUNIA|Khordha": {
+    "lat": 20.1819642,
+    "lon": 85.4316929,
+    "display": "Begunia, Khordha, Odisha, India"
+  },
+  "GOPALPUR|Cuttack": {
+    "lat": 20.4272328,
+    "lon": 85.1643896,
+    "display": "Gopalpur, Kanpur, Cuttack, Odisha, 754037, India"
+  },
+  "KUJANGA|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SECTOR-3|Cuttack": {
+    "lat": 20.4686,
+    "lon": 85.8792,
+    "display": "Cuttack, Cuttack (M.Corp.) P.S, Cuttack, Odisha, 753001, India"
+  },
+  "NIMAPADA / DIGHAL (GSS)|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DADHIMACHAGADIA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BANARPAL|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "INFOCITY|Khordha": {
+    "lat": 20.3428251,
+    "lon": 85.8063721,
+    "display": "Infocity Road, Ward 1, North Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751021, India"
+  },
+  "CHANDAKA-A (GSS)|Khordha": {
+    "lat": 20.3669374,
+    "lon": 85.7672381,
+    "display": "Chandaka, Khordha, Odisha, 754005, India"
+  },
+  "KALPANA|Khordha": {
+    "lat": 20.2582931,
+    "lon": 85.8414175,
+    "display": "Kalpana Sq., Ward 56, South East Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751014, India"
+  },
+  "PALDHUAPADA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "22 MAUJA|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SECTOR-10/11|Cuttack": {
+    "lat": 20.4835432,
+    "lon": 85.8193348,
+    "display": "CDA Sector - 10, Cuttack, Cuttack (M.Corp.) P.S, Cuttack, Odisha, 753001, India"
+  },
+  "BIRIDI|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "MANCHESWAR|Khordha": {
+    "lat": 20.3223078,
+    "lon": 85.8449016,
+    "display": "Mancheswar, Rangamatia Tala Sahi Road, Ward 9, North Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751017, India"
+  },
+  "BALIA (ADHANGA)|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "INDUSTRIAL ESTATE|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BOLAGARH|Khordha": {
+    "lat": 20.1727446,
+    "lon": 85.2755602,
+    "display": "Bolagarh, Bolagad, Khordha, Odisha, India"
+  },
+  "KAKATPUR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BIJAYCHANDRAPUR ODSSP|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DELANGA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "IPICOL|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KANDARPUR|Cuttack": {
+    "lat": 20.3970438,
+    "lon": 86.0181623,
+    "display": "Kandarpur, NH55, Kandarpur, Cuttack, Odisha, 754003, India"
+  },
+  "CHHATISA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "ORIKANTA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CUTTACK (GSS)|Cuttack": {
+    "lat": 20.4686,
+    "lon": 85.8792,
+    "display": "Cuttack, Cuttack (M.Corp.) P.S, Cuttack, Odisha, 753001, India"
+  },
+  "JOBRA|Cuttack": {
+    "lat": 20.4787177,
+    "lon": 85.9012061,
+    "display": "Jobra Park, Cuttack, Cuttack (M.Corp.) P.S, Cuttack, Odisha, 753001, India"
+  },
+  "BRAHMAGIRI|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "AUL|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "UNIT-4|Khordha": {
+    "lat": 20.2788178,
+    "lon": 85.8302852,
+    "display": "Unit-4, Ward 36, South East Zone, Bhubaneswar Municipal Corporation, Bhubaneswar (M.Corp.), Khordha, Odisha, 751000, India"
+  },
+  "NUAGAON|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NAYAGARH|Khordha": {
+    "lat": 20.1869301,
+    "lon": 85.6170613,
+    "display": "Khordha -Nayagarh Road NH 57, Baseli Sahi, Khurdha Municipality Boundary, Khordha, Odisha, 752057, India"
+  },
+  "NAUGAON|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "RCMS|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PANCHAMAHAL|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KANIHA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TRAHI ACHYUTA NAGAR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KHELAR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BADAMBA|Cuttack": {
+    "lat": 20.4385848,
+    "lon": 85.3408503,
+    "display": "Badamba, Cuttack, Odisha, 754031, India"
+  },
+  "SARUA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PIPILI|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "MANGALPUR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JAGATPUR-1|Cuttack": {
+    "lat": 20.496974,
+    "lon": 85.9197807,
+    "display": "Jagatpur, Cuttack (M.Corp.) P.S, Cuttack, Odisha, India"
+  },
+  "UNIT-8 GIS (TPCODL)|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PRATAPSASAN (GSS)|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PANIPOILA (BALUGAON)|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "LINGIPUR|Khordha": {
+    "lat": 20.2137892,
+    "lon": 85.8536106,
+    "display": "Lingipur Chowk, Cuttack - Puri Bypass Road, Sisupalgarh, Bhubaneswar, Bhubaneswar (M.Corp.), Khordha, Odisha, 751001, India"
+  },
+  "BALICHANDRAPUR|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KULAKAPASI|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BAGHAMARI|Khordha": {
+    "lat": 20.2200737,
+    "lon": 85.5003627,
+    "display": "Baghamari, Khordha, Odisha, 752061, India"
+  },
+  "CHANDPUR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BHUSANDAPUR|Khordha": {
+    "lat": 19.9460289,
+    "lon": 85.4710378,
+    "display": "Goverment hospital,Bhusandapur, NH16, Tangi, Khordha, Odisha, 752021, India"
+  },
+  "CHHENDIPADA|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NABAPATNA|Jagatsinghpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "MEDICAL|Cuttack": {
+    "lat": 20.4734664,
+    "lon": 85.8911624,
+    "display": "Srirama Chandra Bhanja Medical College and Hospital, SCB MEDICAL ROAD, Badambadi, Cuttack, Cuttack (M.Corp.) P.S, Cuttack, Odisha, 753007, India"
+  },
+  "KHUNTUNI|Cuttack": {
+    "lat": 20.5472338,
+    "lon": 85.7370324,
+    "display": "Khuntuni, Cuttack, Odisha, India"
+  },
+  "UNIT-8 GIS (GSS)|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DELTA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JODA(HIRAKUD COLONY) (ODSSP)|Keonjhar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "220/132/33 KV JODA|Keonjhar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "POWERHOUSE|Bhadrak": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TAHASIL|Bhadrak": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NEW TEGHARI|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TELKOI|Keonjhar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SWADHINPADIA|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JAMSULI|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "STADIUM|Mayurbhanj": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BIJEGANGADHARPUR (ODSSP)|Bhadrak": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DIGRANIA|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "HATIGARH|Balasore": {
+    "lat": 21.8908566,
+    "lon": 87.1927293,
+    "display": "Hatigarh Post Office, Hatigarh, Raibania, Baleshwar, Odisha, 756033, India"
+  },
+  "KASIMABAD|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JUDIA|Keonjhar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SOVARAMPUR|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KABATABANDHA|Jajpur": {
+    "lat": 20.8717794,
+    "lon": 86.0230538,
+    "display": "PHC, Kabatabandha, NH53, Jajapur, Jajpur, Odisha, 755023, India"
+  },
+  "SAHADA|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DEHURDA|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BETNOTI|Mayurbhanj": {
+    "lat": 21.7418915,
+    "lon": 86.8456965,
+    "display": "Betnoti, Betanati, Mayurbhanj, Odisha, 757025, India"
+  },
+  "BHADRASAHI|Keonjhar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BARAHAPUR (ODSSP)|Bhadrak": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BALASHRAMPADIA (ODSSP)|Jajpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GORUMAHISANI (ODSSP)|Mayurbhanj": {
+    "lat": 22.3263979,
+    "lon": 86.3096182,
+    "display": "Gorumahisani, Mayurbhanj, Odisha, India"
+  },
+  "SUNDARIMUHIN (ODSSP)|Jajpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PATANA|Keonjhar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KUPARI|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JALESWAR|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BARAPADA|Bhadrak": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NARANPUR (ODSSP)|Keonjhar": {
+    "lat": 21.6171438,
+    "lon": 85.6372317,
+    "display": "Naranpur, NH20, Kendujhargarh, Kendujhar Town, Kendujhar, Odisha, 758001, India"
+  },
+  "CHARIGHARIA(IPDS)|Bhadrak": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KHIREITANGARI (ODSSP)|Keonjhar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JASHIPUR_BNED|Bhadrak": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "THAKURMUNDA|Mayurbhanj": {
+    "lat": 21.5693934,
+    "lon": 86.1046982,
+    "display": "Thakurmunda, Mayurbhanj, Odisha, 757038, India"
+  },
+  "ISWARPUR|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DALA|Jajpur": {
+    "lat": 20.9436119,
+    "lon": 86.1386601,
+    "display": "State Bank of India, dala chaak, NH20, Jajpur Road, Korai, Jajpur, Odisha, 755019, India"
+  },
+  "JASHIPUR_RED|Mayurbhanj": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GUJADIHA (ODSSP)|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TURMUNGA|Keonjhar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SRIJANG|Balasore": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "UDALA|Mayurbhanj": {
+    "lat": 21.5831418,
+    "lon": 86.5832677,
+    "display": "Udala, Mayurbhanj, Odisha, India"
+  },
+  "KHAIRA|Balasore": {
+    "lat": 21.2836625,
+    "lon": 86.4715766,
+    "display": "Khaira College Khaira,Balasore, Khaira, Baleshwar, Odisha, 756049, India"
+  },
+  "HARIPUR (ODSSP)|Jajpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DAMODARPUR|Jajpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "LAL BAZAR (GOLAPBAG) (IPDS)|Mayurbhanj": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "REMULI|Keonjhar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TURUNGA(P307)|Bargarh": {
+    "lat": 21.3544384,
+    "lon": 83.5599732,
+    "display": "Turunga, Bargarh Sadar, Bargarh, Odisha, India"
+  },
+  "GANDHI CHOWK (P071)|Sambalpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BRAJARAJNAGAR(P061)|Sambalpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KUCHINDA(P043)|Sambalpur": {
+    "lat": 21.7477388,
+    "lon": 84.3506401,
+    "display": "Kuchinda, Kochinda, Sambalpur, Odisha, 768222, India"
+  },
+  "KUSADUNGURI(P502)|Kalahandi": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GURUNDIA(P219)|Sundargarh": {
+    "lat": 21.8941151,
+    "lon": 84.6647122,
+    "display": "Gurundia, Sundargarh, Odisha, 770043, India"
+  },
+  "JHARUPADA(P056)|Sambalpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "HIKUDI(RAXA CHOWK)(P465)|Bolangir": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KUSUMI(P054)|Sambalpur": {
+    "lat": 21.7628245,
+    "lon": 84.5283668,
+    "display": "Kusumi, Mahulpalli, Sambalpur, Odisha, India"
+  },
+  "LALTIKRA(P403)|Bolangir": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NAKTIGUDA(P501)|Kalahandi": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DHATUKPALI(P316)|Bargarh": {
+    "lat": 21.1948404,
+    "lon": 83.8522321,
+    "display": "Dhātukpāli, Bheden, Bargarh, Odisha, 768115, India"
+  },
+  "BANDUPALA(P519)|Kalahandi": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KANDPALA(P323)|Bargarh": {
+    "lat": 21.551752,
+    "lon": 83.3975494,
+    "display": "Kandpala, Ambabhona, Bargarh, Odisha, 768045, India"
+  },
+  "KHARIAR(P544)|Kalahandi": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SUBDEGA(P249)|Sundargarh": {
+    "lat": 22.2924612,
+    "lon": 84.1056671,
+    "display": "Subdega, Talasara, Sundargarh, Odisha, 770014, India"
+  },
+  "BODEN(P546)|Kalahandi": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TELIMUNDA(REAMAL)(P080)|Sambalpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DEOGARH(P066)|Sambalpur": {
+    "lat": 21.2752379,
+    "lon": 84.7667683,
+    "display": "Angul - Deogarh Road, Riamal, Reamal, Debagarh, Odisha, 768109, India"
+  },
+  "SARGIPALI(P252)|Sundargarh": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KUNDUKELA(P262)|Sundargarh": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KARLAPADA(P504)|Kalahandi": {
+    "lat": 20.0773763,
+    "lon": 83.1043477,
+    "display": "Government Hospital, Karlapada, SH16, Bhawanipatna, Sadar, Kalahandi, Odisha, 766011, India"
+  },
+  "ATTANGUDA(P503)|Kalahandi": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BAGDEHI(P031)|Sambalpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JUNAGARH(P522)|Kalahandi": {
+    "lat": 19.8137068,
+    "lon": 82.946796,
+    "display": "Junagarh, Kalahandi, Odisha, India"
+  },
+  "GARJANBAHAL(P255)|Sundargarh": {
+    "lat": 22.0304037,
+    "lon": 83.7510884,
+    "display": "Garjanbahal Coal Mine, Hemgir, Sundargarh, Odisha, India"
+  },
+  "BURLA III(P005)|Sambalpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SARASMAL(P030)|Sambalpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "132/33KV BOLANGIR NEW GSS|Bolangir": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PHULBANI(C)|Kandhamal": {
+    "lat": 20.4762322,
+    "lon": 84.2348517,
+    "display": "Phulbani, Phulabani Town, Kandhamal, Odisha, 762001, India"
+  },
+  "BD PUR|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "LAXMIPUR|Koraput": {
+    "lat": 18.986112,
+    "lon": 83.115013,
+    "display": "Laxmipur, Lakshmipur, Koraput, Odisha, India"
+  },
+  "TIKABALI|Kandhamal": {
+    "lat": 20.2463743,
+    "lon": 84.3190009,
+    "display": "Tikabali, Kandhamal, Odisha, 762010, India"
+  },
+  "GUTINGIA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "HINJILI(C)|Ganjam": {
+    "lat": 19.4668553,
+    "lon": 84.75146,
+    "display": "Hinjili, Ganjam, Odisha, India"
+  },
+  "KHAJURIPADA|Kandhamal": {
+    "lat": 20.4298884,
+    "lon": 84.3536167,
+    "display": "Khajuripada, Kandhamal, Odisha, India"
+  },
+  "SERIGUDA(C)|Rayagada": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GUNUPUR(C)|Rayagada": {
+    "lat": 19.0714045,
+    "lon": 83.8148798,
+    "display": "Gunupur, Rayagada, Odisha, 765022, India"
+  },
+  "BELAGUNTHA(C)|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JN PRASAD|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "LALSING|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SARANGAGADA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GARABANDHA|Rayagada": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BARAKHAMBA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NARAYANPATNA|Koraput": {
+    "lat": 18.8789148,
+    "lon": 83.1681889,
+    "display": "Narayanpatna, Narayanpatana, Koraput, Odisha, 764014, India"
+  },
+  "CHAKAPADA|Kandhamal": {
+    "lat": 20.2655588,
+    "lon": 84.491537,
+    "display": "Chakapada, Kandhamal, Odisha, 762028, India"
+  },
+  "MANAMUNDA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GAYAGANDA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BIKRAMPUR|Rayagada": {
+    "lat": 19.1049707,
+    "lon": 83.8983028,
+    "display": "Soura Bikrampur, Puttasing, Rayagada, Odisha, India"
+  },
+  "BADAGADA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "AMBAPUA(C)|Ganjam": {
+    "lat": 19.3172156,
+    "lon": 84.8473237,
+    "display": "Ambapua, Rangeilunda, Ganjam, Odisha, 760011, India"
+  },
+  "BOUDH(C)|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BAGHIAPADA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "132/33 KV HINJILIKATU(GIS) GSS|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "AMBAGADA(C)|Ganjam": {
+    "lat": 19.3344401,
+    "lon": 84.7564765,
+    "display": "Ambagada, Kukudakhandi, Ganjam, Odisha, 760002, India"
+  },
+  "KALIMELA|Koraput": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SB NUAGAON|Koraput": {
+    "lat": 18.5803925,
+    "lon": 83.0007639,
+    "display": "Nuagaon, Pottangi, Koraput, Odisha, India"
+  },
+  "DARINGIBADI|Kandhamal": {
+    "lat": 19.9077624,
+    "lon": 84.1229586,
+    "display": "CHC, Daringibadi, NH59, Daringbadi, Kandhamal, Odisha, 762104, India"
+  },
+  "GHANTAPADA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "RAMANAGUDA|Rayagada": {
+    "lat": 19.2124796,
+    "lon": 83.6756523,
+    "display": "CHC, Ramanaguda, NH326, Dhepagudaa, Anakabadi, Rayagada, Odisha, 765024, India"
+  },
+  "UNIVERSITY/BHANJAVIHAR|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GOODSHED|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PITATALI|Ganjam": {
+    "lat": 19.1651541,
+    "lon": 84.6599579,
+    "display": "Pitatali, Chikiti, Ganjam, Odisha, 761010, India"
+  },
+  "LOCHAPADA(C)|Ganjam": {
+    "lat": 19.3199318,
+    "lon": 84.7056627,
+    "display": "Lochapada, Kukudakhandi, Ganjam, Odisha, India"
+  },
+  "NK NAGAR(C)|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SORADA(C)|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JAGAPUR|Ganjam": {
+    "lat": 19.1650957,
+    "lon": 84.7279684,
+    "display": "Jagapur, Chikiti, Ganjam, Odisha, 761009, India"
+  },
+  "GHULGHULAPADAR|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "220/132/33KV NARENDRAPUR GSS|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DASMANTPUR(KORAPUT DIV)|Koraput": {
+    "lat": 19.0434811,
+    "lon": 82.9194684,
+    "display": "CHC-2, Dasmantpur, manguruguda, Dasmanthpur, Koraput, Odisha, 764028, India"
+  },
+  "KODALA|Ganjam": {
+    "lat": 19.6786566,
+    "lon": 85.002595,
+    "display": "Kodala, Ganjam, Odisha, India"
+  },
+  "AMBADOLA|Rayagada": {
+    "lat": 19.8251826,
+    "lon": 83.4672582,
+    "display": "Ambadola, Ambadala, Rayagada, Odisha, 765020, India"
+  },
+  "BORIGUMMA|Koraput": {
+    "lat": 19.046831,
+    "lon": 82.553169,
+    "display": "Borigumma, Boriguma, Koraput, Odisha, 764056, India"
+  },
+  "AMLABHATA|Rayagada": {
+    "lat": 19.253757,
+    "lon": 83.4361367,
+    "display": "Amlabhata Tamparguda, Rayagada, Odisha, India"
+  },
+  "MEDICAL(C)|Ganjam": {
+    "lat": 19.3099173,
+    "lon": 84.8119456,
+    "display": "MKCG Medical College and Hospital, MKCG Medical Road, Ayodhya Nagar, Brahmapur, Rangeilunda, Ganjam, Odisha, 760004, India"
+  },
+  "SAKIRI|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NUAGAON|Ganjam": {
+    "lat": 19.2718276,
+    "lon": 84.538937,
+    "display": "Nuagaon, Ganjam, Odisha, 761042, India"
+  },
+  "MALKANGIRI(C)|Koraput": {
+    "lat": 18.9143159,
+    "lon": 82.7859223,
+    "display": "Malkangiri, Koraput, Odisha, India"
+  },
+  "HUMMA|Ganjam": {
+    "lat": 19.4435426,
+    "lon": 85.076313,
+    "display": "Humma, NH16;NH516A, Palur, Rambha, Ganjam, Odisha, 761027, India"
+  },
+  "CHARICHAKA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHIRIKIPADA/BADAPANKALABADI|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KEBIDI|Koraput": {
+    "lat": 19.1202836,
+    "lon": 83.1391925,
+    "display": "Kebidi, Lakshmipur, Koraput, Odisha, India"
+  },
+  "NIMAKHANDI|Ganjam": {
+    "lat": 19.3409904,
+    "lon": 84.7958786,
+    "display": "Nimakhandi, Kukudakhandi, Ganjam, Odisha, 761001, India"
+  },
+  "BIDYUTPURI(C)|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "UMERKOTE|Koraput": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "B. SINGPUR|Koraput": {
+    "lat": 19.0532533,
+    "lon": 82.6781395,
+    "display": "B Singpur, Bhairabsingipur, Koraput, Odisha, India"
+  },
+  "PADMAPUR|Rayagada": {
+    "lat": 19.2944461,
+    "lon": 83.9285823,
+    "display": "Padmapur, Rayagada, Odisha, India"
+  },
+  "G UDAYGIRI(C)|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PRATAPPUR|Ganjam": {
+    "lat": 19.495955,
+    "lon": 84.9351277,
+    "display": "PHC, Pratappur, SH31, Balia, Purusottampur, Ganjam, Odisha, 761019, India"
+  },
+  "BEGUNIAPADA|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PHIRINGIA|Kandhamal": {
+    "lat": 20.3220718,
+    "lon": 84.0586619,
+    "display": "Phiringia, Kandhamal, Odisha, 762011, India"
+  },
+  "TILISING|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KHALLIKOTE COLLEGE|Ganjam": {
+    "lat": 19.3074766,
+    "lon": 84.7944149,
+    "display": "Khallikote College, Town Hall Road, Gandhi Nagar, Dharma Nagar, Brahmapur, Rangeilunda, Ganjam, Odisha, 760001, India"
+  },
+  "132/33KV BERHAMPUR GSS|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BALIGUDA|Kandhamal": {
+    "lat": 20.1813146,
+    "lon": 83.8733221,
+    "display": "Baliguda, Kandhamal, Odisha, India"
+  },
+  "HATA MUNIGUDA|Rayagada": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KUMAR DHAMUNI|Rayagada": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NUAPADAR|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BOIPARIGUDA|Koraput": {
+    "lat": 18.7490297,
+    "lon": 82.3291595,
+    "display": "Boipariguda, Koraput, Odisha, India"
+  },
+  "TANDAGUDA|Koraput": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PAPADAHANDI|Koraput": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BILAIGUDA/ SIMLIGUDA(C)|Koraput": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PUDAMARI|Ganjam": {
+    "lat": 19.4362845,
+    "lon": 84.4701768,
+    "display": "Government Hospital, Pudamari, NH326, Daseipur, Patapur, Ganjam, Odisha, 761014, India"
+  },
+  "DABUGAON|Koraput": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "132/33KV DABUGAON GSS|Koraput": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BHISMAGIRI|Ganjam": {
+    "lat": 19.3836224,
+    "lon": 84.4662742,
+    "display": "PHC, Bhismagiri, NH326, Daseipur, Digapahandi, Ganjam, Odisha, 761055, India"
+  },
+  "CHATRANGA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JAMUNDA/HARDADAULI|Koraput": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KS NAGAR(C)|Ganjam": {
+    "lat": 19.3102179,
+    "lon": 84.7843203,
+    "display": "Dharma Nagar, Brahmapur, Rangeilunda, Ganjam, Odisha, 760002, India"
+  },
+  "ASURABANDHA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "ANKULI|Ganjam": {
+    "lat": 19.3010735,
+    "lon": 84.8156305,
+    "display": "Ankuli, Ayodhya Nagar, Brahmapur, Rangeilunda, Ganjam, Odisha, 760008, India"
+  },
+  "PAIKAJAMUNA|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "MOHANA|Rayagada": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KOSALA|Angul": {
+    "lat": 21.0151033,
+    "lon": 84.9348012,
+    "display": "SubCentre,Kosala, Angul - Deogarh Road, Chhendipada, Anugul, Angul, Odisha, 759130, India"
+  },
+  "132/33KV PURUSOTTAMPUR GSS|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "POLSARA/BELAGAON(C)|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SOBARA|Rayagada": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DEKHALI|Ganjam": {
+    "lat": 19.2896775,
+    "lon": 84.5491974,
+    "display": "Dekhali, Nuagaon, Ganjam, Odisha, 761042, India"
+  },
+  "CANTONMENT|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "|Khordha": {
+    "lat": 20.0538149,
+    "lon": 85.5023308,
+    "display": "Khordha, Odisha, India"
+  }
+}

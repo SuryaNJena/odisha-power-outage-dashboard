@@ -1,158 +1,211 @@
 package main
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
+	"sync"
+	"time"
 )
-
-// circleToDistrict maps the "Name of Circle" CSV column to an Odisha district name
-var circleToDistrict = map[string]string{
-	"BBSR-1":         "Khordha",
-	"BBSR-2":         "Khordha",
-	"CUTTACK":        "Cuttack",
-	"PARADEEP":       "Jagatsinghpur",
-	"DHENKANAL":      "Dhenkanal",
-	"BHADRAK":        "Bhadrak",
-	"BARIPADA":       "Mayurbhanj",
-	"BALASORE":       "Balasore",
-	"KEONJHAR":       "Keonjhar",
-	"JAJPUR":         "Jajpur",
-	"BARGARH":        "Bargarh",
-	"SAMBALPUR":      "Sambalpur",
-	"ROURKELA":       "Sundargarh",
-	"BOLANGIR":       "Bolangir",
-	"KALAHANDI":      "Kalahandi",
-	"JEYPORE":        "Koraput",
-	"BERHAMPUR":      "Ganjam",
-	"BERHAMPUR CITY": "Ganjam",
-	"ASKA":           "Ganjam",
-	"BHANJANAGAR":    "Kandhamal",
-	"RAYAGADA":       "Rayagada",
-	"JHARSUGUDA":     "Jharsuguda",
-	"KENDRAPARA":     "Kendrapara",
-	"NAYAGARH":       "Nayagarh",
-	"PURI":           "Puri",
-	"GANJAM":         "Ganjam",
-	"KORAPUT":        "Koraput",
-	"MALKANGIRI":     "Malkangiri",
-	"NABARANGPUR":    "Nabarangpur",
-	"NUAPADA":        "Nuapada",
-	"SONEPUR":        "Subarnapur",
-	"ANGUL":          "Angul",
-	"BAUDH":          "Boudh",
-	"GAJAPATI":       "Gajapati",
-	"KENDUJHAR":      "Keonjhar",
-	"SUBARNAPUR":     "Subarnapur",
-}
 
 type DistrictData struct {
 	Name  string `json:"name"`
 	Value int    `json:"value"`
 }
 
+type Dot struct {
+	District string  `json:"district"`
+	Circle   string  `json:"circle"`
+	Division string  `json:"division"`
+	GSS      string  `json:"gss"`
+	Voltage  string  `json:"voltage"`
+	Feeder   string  `json:"feeder"`
+	Start    string  `json:"start"`
+	End      string  `json:"end"`
+	Reason   string  `json:"reason"`
+	Areas    string  `json:"areas"`
+	Lat      float64 `json:"lat"`
+	Lon      float64 `json:"lon"`
+	Geocoded bool    `json:"geocoded"`
+}
+
 type MapResponse struct {
 	Districts []DistrictData `json:"districts"`
+	Dots      []Dot          `json:"dots"`
 	Total     int            `json:"total"`
+	UpdatedAt string         `json:"updatedAt"`
+	Source    string         `json:"source"`
 }
 
-func loadCSVData(dirPath string) (map[string]int, error) {
-	counts := make(map[string]int)
-
-	entries, err := os.ReadDir(dirPath)
-	if err != nil {
-		return nil, fmt.Errorf("reading scrappedData dir: %w", err)
-	}
-
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".csv") {
-			continue
-		}
-
-		fpath := filepath.Join(dirPath, entry.Name())
-		f, err := os.Open(fpath)
-		if err != nil {
-			log.Printf("Warning: could not open %s: %v", fpath, err)
-			continue
-		}
-
-		reader := csv.NewReader(f)
-		reader.LazyQuotes = true
-		reader.FieldsPerRecord = -1 // variable fields
-
-		rows, err := reader.ReadAll()
-		f.Close()
-		if err != nil {
-			log.Printf("Warning: error reading %s: %v", fpath, err)
-			continue
-		}
-
-		// Skip header row; column index 1 = "Name of Circle"
-		for i, row := range rows {
-			if i == 0 || len(row) < 2 {
-				continue
-			}
-			circle := strings.TrimSpace(strings.ToUpper(row[1]))
-			district, ok := circleToDistrict[circle]
-			if !ok {
-				// Try title-case lookup
-				titleCircle := strings.Title(strings.ToLower(row[1]))
-				district, ok = circleToDistrict[titleCircle]
-			}
-			if ok {
-				counts[district]++
-			} else {
-				log.Printf("Unknown circle: %q (from %s)", row[1], entry.Name())
-			}
-		}
-	}
-
-	return counts, nil
+type Report struct {
+	District   string `json:"district"`
+	GSS        string `json:"gss"`
+	Feeder     string `json:"feeder"`
+	Comment    string `json:"comment"`
+	ReportedAt string `json:"reportedAt"`
 }
 
-var cachedData *MapResponse
+type AppState struct {
+	mu              sync.RWMutex
+	mart            *MapResponse
+	root            string
+	martPath        string
+	reportPath      string
+	pipelineRunning bool
+	lastError       string
+}
 
-func loadData() {
-	// When launched via `go run backend/main.go` from the project root,
-	// the working directory is the project root.
-	// Try both locations to be safe.
-	scrappedDir := "scrappedData"
-	if _, err := os.Stat(scrappedDir); os.IsNotExist(err) {
-		scrappedDir = filepath.Join("..", "scrappedData")
+func resolveRoot() string {
+	if _, err := os.Stat(filepath.Join(".", "data")); err == nil {
+		return "."
 	}
-	counts, err := loadCSVData(scrappedDir)
+	return ".."
+}
+
+func loadMart(path string) (*MapResponse, error) {
+	data, err := os.ReadFile(path)
 	if err != nil {
-		log.Printf("Error loading CSV data: %v — using empty data", err)
-		counts = make(map[string]int)
+		return nil, err
+	}
+	var m MapResponse
+	if err := json.Unmarshal(data, &m); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+func (s *AppState) getData() *MapResponse {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.mart == nil {
+		return &MapResponse{Districts: []DistrictData{}, Dots: []Dot{}, Total: 0, UpdatedAt: "", Source: "empty"}
+	}
+	return s.mart
+}
+
+// runPipeline executes scrap.py then process.py from the repo root.
+func (s *AppState) runPipeline() error {
+	for _, script := range []string{"scrap.py", "process.py"} {
+		cmd := exec.Command("python", script)
+		cmd.Dir = s.root
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("pipeline step %s failed: %w\n%s", script, err, string(out))
+		}
+		log.Printf("pipeline %s ok: %s", script, lastLines(string(out), 3))
+	}
+	return nil
+}
+
+func lastLines(s string, n int) string {
+	lines := []string{}
+	start := len(s)
+	for i := len(s) - 1; i >= 0 && len(lines) < n; i-- {
+		if s[i] == '\n' {
+			lines = append([]string{s[i+1 : start]}, lines...)
+			start = i
+		}
+	}
+	if len(lines) < n && start > 0 {
+		lines = append([]string{s[:start]}, lines...)
+	}
+	out := ""
+	for i, l := range lines {
+		if i > 0 {
+			out += " | "
+		}
+		out += l
+	}
+	return out
+}
+
+// refreshSync runs the pipeline and reloads the mart. Caller must NOT hold the lock.
+func (s *AppState) refreshSync() error {
+	s.mu.Lock()
+	if s.pipelineRunning {
+		s.mu.Unlock()
+		return nil
+	}
+	s.pipelineRunning = true
+	s.mu.Unlock()
+
+	err := s.runPipeline()
+	if err != nil {
+		s.mu.Lock()
+		s.lastError = err.Error()
+		s.pipelineRunning = false
+		s.mu.Unlock()
+		return err
 	}
 
-	districts := make([]DistrictData, 0, len(counts))
-	total := 0
-	for name, count := range counts {
-		districts = append(districts, DistrictData{Name: name, Value: count})
-		total += count
+	mart, err := loadMart(s.martPath)
+	if err != nil {
+		s.mu.Lock()
+		s.lastError = err.Error()
+		s.pipelineRunning = false
+		s.mu.Unlock()
+		return err
 	}
-	sort.Slice(districts, func(i, j int) bool {
-		return districts[i].Value > districts[j].Value
-	})
 
-	cachedData = &MapResponse{
-		Districts: districts,
-		Total:     total,
+	s.mu.Lock()
+	s.mart = mart
+	s.lastError = ""
+	s.pipelineRunning = false
+	s.mu.Unlock()
+	return nil
+}
+
+// refreshAsync triggers the pipeline in a background goroutine if not already running.
+func (s *AppState) refreshAsync() {
+	s.mu.RLock()
+	running := s.pipelineRunning
+	s.mu.RUnlock()
+	if running {
+		return
 	}
-	log.Printf("Loaded %d outage records across %d districts", total, len(districts))
+	go func() {
+		if err := s.refreshSync(); err != nil {
+			log.Printf("background refresh error: %v", err)
+		}
+	}()
+}
+
+func (s *AppState) isStale() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.mart == nil || s.mart.UpdatedAt == "" {
+		return true
+	}
+	t, err := time.Parse(time.RFC3339Nano, s.mart.UpdatedAt)
+	if err != nil {
+		return true
+	}
+	return time.Since(t) > time.Hour
+}
+
+func (s *AppState) addReport(r Report) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var reports []Report
+	if data, err := os.ReadFile(s.reportPath); err == nil {
+		_ = json.Unmarshal(data, &reports)
+	}
+	reports = append(reports, r)
+	os.MkdirAll(filepath.Dir(s.reportPath), 0o755)
+	out, _ := json.MarshalIndent(reports, "", "  ")
+	return os.WriteFile(s.reportPath, out, 0o644)
 }
 
 func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
@@ -162,26 +215,112 @@ func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func getMapData(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	if cachedData == nil {
-		http.Error(w, "data not loaded", http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(cachedData)
-}
-
 func main() {
-	loadData()
+	root := resolveRoot()
+	state := &AppState{
+		root:       root,
+		martPath:   filepath.Join(root, "data", "mart", "outages.json"),
+		reportPath: filepath.Join(root, "data", "reports.json"),
+	}
 
-	http.Handle("/", http.FileServer(http.Dir("../public")))
-	http.HandleFunc("/api/mapdata", corsMiddleware(getMapData))
+	// Load the latest datamart; if missing, build it once.
+	mart, err := loadMart(state.martPath)
+	if err != nil {
+		log.Printf("mart not found (%v) — running initial pipeline", err)
+		if err := state.refreshSync(); err != nil {
+			log.Printf("initial pipeline failed: %v", err)
+		}
+	} else {
+		state.mu.Lock()
+		state.mart = mart
+		state.mu.Unlock()
+	}
+
+	// Scheduled refresh every 6 hours.
+	go func() {
+		ticker := time.NewTicker(6 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			state.refreshAsync()
+		}
+	}()
+
+	// Freshness check loop: if mart is stale (>1h), kick a background refresh.
+	go func() {
+		ticker := time.NewTicker(15 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			if state.isStale() {
+				state.refreshAsync()
+			}
+		}
+	}()
+
+	// Serve the exported frontend (out/) on the same port so one tunnel covers
+	// both the UI and the API. Falls back to index.html for unknown routes.
+	outDir := filepath.Join(root, "out")
+	if info, err := os.Stat(outDir); err == nil && info.IsDir() {
+		fileServer := http.FileServer(http.Dir(outDir))
+		http.Handle("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+			if strings.HasPrefix(r.URL.Path, "/api") {
+				http.NotFound(w, r)
+				return
+			}
+			candidate := filepath.Join(outDir, filepath.Clean("/"+r.URL.Path))
+			if fi, err := os.Stat(candidate); err != nil || fi.IsDir() {
+				http.ServeFile(w, r, filepath.Join(outDir, "index.html"))
+				return
+			}
+			fileServer.ServeHTTP(w, r)
+		}))
+		log.Printf("serving frontend from %s", outDir)
+	} else {
+		log.Printf("no %s build found — serve the frontend separately (npm run dev) or run npm run build", outDir)
+	}
+
+	http.HandleFunc("/api/mapdata", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if state.isStale() {
+			state.refreshAsync()
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(state.getData())
+	}))
+
+	http.HandleFunc("/api/refresh", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost && r.Method != http.MethodGet {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		state.refreshAsync()
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		fmt.Fprintf(w, `{"status":"refreshing"}`)
+	}))
+
+	http.HandleFunc("/api/report", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		var rep Report
+		if err := json.NewDecoder(r.Body).Decode(&rep); err != nil {
+			http.Error(w, "invalid body", http.StatusBadRequest)
+			return
+		}
+		rep.ReportedAt = time.Now().UTC().Format(time.RFC3339)
+		if err := state.addReport(rep); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		fmt.Fprintf(w, `{"status":"ok"}`)
+	}))
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3001"
 	}
-
-	fmt.Printf("Server starting on port %s\n", port)
+	log.Printf("backend running on :%s (root=%s)", port, root)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }

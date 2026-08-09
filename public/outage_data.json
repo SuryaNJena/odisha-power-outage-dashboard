@@ -1,6 +1,79 @@
 {
-  "districts": [],
-  "total": 0,
-  "mostAffected": "",
-  "updatedAt": "2026-03-09T11:56:35.984653+00:00"
+  "districts": [
+    {
+      "name": "Khordha",
+      "value": 109
+    },
+    {
+      "name": "Cuttack",
+      "value": 65
+    },
+    {
+      "name": "Ganjam",
+      "value": 51
+    },
+    {
+      "name": "Kandhamal",
+      "value": 50
+    },
+    {
+      "name": "Dhenkanal",
+      "value": 30
+    },
+    {
+      "name": "Jagatsinghpur",
+      "value": 25
+    },
+    {
+      "name": "Balasore",
+      "value": 21
+    },
+    {
+      "name": "Koraput",
+      "value": 19
+    },
+    {
+      "name": "Kalahandi",
+      "value": 13
+    },
+    {
+      "name": "Rayagada",
+      "value": 13
+    },
+    {
+      "name": "Keonjhar",
+      "value": 12
+    },
+    {
+      "name": "Sambalpur",
+      "value": 12
+    },
+    {
+      "name": "Mayurbhanj",
+      "value": 10
+    },
+    {
+      "name": "Bhadrak",
+      "value": 8
+    },
+    {
+      "name": "Jajpur",
+      "value": 7
+    },
+    {
+      "name": "Sundargarh",
+      "value": 5
+    },
+    {
+      "name": "Bargarh",
+      "value": 3
+    },
+    {
+      "name": "Bolangir",
+      "value": 3
+    }
+  ],
+  "total": 456,
+  "mostAffected": "Khordha",
+  "updatedAt": "2026-08-09T18:13:27.544651+00:00"
 }
