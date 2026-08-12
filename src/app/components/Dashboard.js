@@ -8,6 +8,41 @@ function formatReason(reason) {
   return reason.length > 60 ? reason.slice(0, 58) + '…' : reason;
 }
 
+function splitAreas(areas) {
+  if (!areas) return [];
+  return areas
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function AreasCell({ areas }) {
+  const [expanded, setExpanded] = useState(false);
+  const list = splitAreas(areas);
+
+  if (list.length === 0) return '—';
+  if (list.length <= 3) return <span>{list.join(', ')}</span>;
+
+  const shown = expanded ? list : list.slice(0, 3);
+
+  return (
+    <button
+      type="button"
+      className="areas-cell"
+      onClick={() => setExpanded((v) => !v)}
+      aria-expanded={expanded}
+      title={expanded ? 'Click to collapse' : list.join(', ')}
+    >
+      {shown.join(', ')}
+      {expanded ? (
+        <span className="areas-toggle">▴ less</span>
+      ) : (
+        <span className="areas-toggle">▾ +{list.length - 3} more</span>
+      )}
+    </button>
+  );
+}
+
 export default function Dashboard({ dots = [] }) {
   const [district, setDistrict] = useState('all');
   const [reason, setReason] = useState('all');
@@ -146,6 +181,7 @@ export default function Dashboard({ dots = [] }) {
                 <th>District</th>
                 <th>Substation</th>
                 <th>Feeder</th>
+                <th>Key areas affected</th>
                 <th>Reason</th>
                 <th>Start</th>
                 <th>Restore</th>
@@ -158,6 +194,7 @@ export default function Dashboard({ dots = [] }) {
                   <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{d.district}</td>
                   <td>{d.gss || '—'}</td>
                   <td>{d.feeder || '—'}</td>
+                  <td><AreasCell areas={d.areas} /></td>
                   <td title={d.reason}>{formatReason(d.reason)}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{d.start || '—'}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{d.end || '—'}</td>
@@ -170,7 +207,7 @@ export default function Dashboard({ dots = [] }) {
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>
+                  <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>
                     No outages match the current filters.
                   </td>
                 </tr>

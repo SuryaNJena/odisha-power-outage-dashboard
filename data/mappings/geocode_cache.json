@@ -3788,5 +3788,190 @@
     "lat": 19.995579,
     "lon": 85.8237817,
     "display": "Satasankha, Pipili, Puri, Odisha, 752046, India"
+  },
+  "BALIPATNA|Puri": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "RAJAKANIKA|Kendrapara": {
+    "lat": 20.73714,
+    "lon": 86.6976565,
+    "display": "Community Health Centre, Rajakanika, Rajkanika PS-Tahasil Road, Raj Kanika, Rajkanika, Kendrapara, Odisha, 754220, India"
+  },
+  "BHAPUR|Dhenkanal": {
+    "lat": 20.5659822,
+    "lon": 85.4856974,
+    "display": "Government Hospital, Bhapur, NH655, Dhenkanal Sadar, Dhenkanal, Odisha, 759015, India"
+  },
+  "HEMGIR(P261)|Sundargarh": {
+    "lat": 21.9628279,
+    "lon": 83.7108967,
+    "display": "Hemgir, Sundargarh, Odisha, India"
+  },
+  "OSAP|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BHINGARPUR|Khordha": {
+    "lat": 20.2610963,
+    "lon": 85.9312767,
+    "display": "Goverment hospital,Bhingarpur, Naibandha road, Balikanthia, Balianta, Khordha, Odisha, 752102, India"
+  },
+  "BRAJABIHARIPUR (GSS)|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "LAIKERA(P038)|Jharsuguda": {
+    "lat": 21.9008843,
+    "lon": 84.210113,
+    "display": "Laikera, Jharsuguda, Odisha, India"
+  },
+  "GADABISHNUPUR|Jagatsinghapur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NUABAG|Dhenkanal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KALARAHANGA|Khordha": {
+    "lat": 20.3696335,
+    "lon": 85.8298623,
+    "display": "kalarahanga canal route, Gandarpur, Nandankanan, Khordha, Odisha, 751034, India"
+  },
+  "MENDHASAL ODSSP|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BHUKTA(P320)|Bargarh": {
+    "lat": 21.5888482,
+    "lon": 83.4277618,
+    "display": "Bhukta, Ambabhona, Bargarh, Odisha, 768045, India"
+  },
+  "BISWANATHPUR(P511)|Kalahandi": {
+    "lat": 19.8231037,
+    "lon": 83.3257127,
+    "display": "Biswanathpur, Kalahandi, Odisha, 766020, India"
+  },
+  "UNIT -9 FLAT|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DHAMARA|Bhadrak": {
+    "lat": 20.8029385,
+    "lon": 86.907171,
+    "display": "Dhamara Marine, Bhadrak, Odisha, 756171, India"
+  },
+  "NUAPATANA|Cuttack": {
+    "lat": 20.4489387,
+    "lon": 85.0538998,
+    "display": "Nuapatana, Narasinghpur, Cuttack, Odisha, 754032, India"
+  },
+  "BASUDEBPUR|Puri": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "HARIPUR|Nayagarh": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DHAURAPALI|Angul": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GADI(ODSSP)|Bhadrak": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TALABANIA|Puri": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JATAMUNDIA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "220/132/33 KV BHADRAK|Bhadrak": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PANIKOLI|Jajpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CRRI|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SINGHAPADA(BHAGATOLA)(P239)|Sundargarh": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHANDIKHOLE (GSS)|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BOINDA (GSS)|Angul": {
+    "lat": 20.9200366,
+    "lon": 84.7482064,
+    "display": "Boinda, SH62, Boinda, Handapa, Angul, Odisha, 759127, India"
+  },
+  "BARAKOLI|Nayagarh": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JAHARA BARIMUL (D.K.BHOLO)|Kendrapara": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "RRL|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "RISHIGAON(P566)|Nuapada": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "RAISINGPUR(P521)|Kalahandi": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHARICHHAKA|Puri": {
+    "lat": 20.058762,
+    "lon": 86.0857064,
+    "display": "Charichhaka Police Station, Nimapada-Charichhak-Astaranga Road, Nimapada, Puri, Odisha, India"
+  },
+  "PANCHAMAHAL|Angul": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BHANGABARI(P505)|Kalahandi": {
+    "lat": null,
+    "lon": null,
+    "display": ""
   }
 }
