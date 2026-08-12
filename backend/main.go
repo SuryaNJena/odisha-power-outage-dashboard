@@ -27,6 +27,7 @@ type Dot struct {
 	Feeder   string  `json:"feeder"`
 	Start    string  `json:"start"`
 	End      string  `json:"end"`
+	Date     string  `json:"date"`
 	Reason   string  `json:"reason"`
 	Areas    string  `json:"areas"`
 	Lat      float64 `json:"lat"`

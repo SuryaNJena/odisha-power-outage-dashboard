@@ -235,6 +235,63 @@ table.data-table {
   padding: 8px 12px;
 }
 
+/* ---------- Touch / small-screen map + filter optimizations ---------- */
+
+/* Comfortable touch targets for the filter rows above the map. */
+.control-row .control,
+.control-row .btn {
+  min-height: 42px;
+}
+
+.zoom-btn {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Hide hover-only affordances on coarse pointers (e.g. cursor grab on phones). */
+@media (pointer: coarse) {
+  .zoom-btn:hover {
+    border-color: var(--border);
+  }
+}
+
+@media (max-width: 620px) {
+  .control-row {
+    align-items: stretch;
+  }
+  .control-row .control {
+    flex: 1 1 120px;
+    min-width: 0;
+    /* 16px keeps iOS Safari from auto-zooming into the date input. */
+    font-size: 16px;
+  }
+  .control-row .btn {
+    flex: 1 1 auto;
+    justify-content: center;
+    white-space: nowrap;
+  }
+  .zoom-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+    border-radius: 12px;
+  }
+  .map-controls {
+    top: 12px;
+    right: 12px;
+    gap: 7px;
+  }
+  .map-legend {
+    left: 10px;
+    bottom: 10px;
+    padding: 6px 10px;
+  }
+  .map-tooltip {
+    max-width: 200px;
+    font-size: 11px;
+    padding: 7px 10px;
+  }
+}
+
 /* ---------- Theme toggle ---------- */
 .theme-toggle {
   background: transparent;

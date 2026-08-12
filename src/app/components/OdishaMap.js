@@ -73,6 +73,10 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
   const panRef = useRef({ dx: 0, dy: 0 }); // accumulated drag offset
   const layoutRef = useRef(null);
   const projectedRef = useRef([]); // [{d, x, y, seed}]
+  // District heat data is kept in a ref so the animation loop + hover handlers
+  // always read the latest values while re-projection stays cheap.
+  const districtsRef = useRef(districts);
+  const countsRef = useRef({ counts: {}, min: 0, max: 1 });
 
   useEffect(() => {
     dotsRef.current = dots;
@@ -80,6 +84,26 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
   useEffect(() => {
     showDotsRef.current = showDots;
   }, [showDots]);
+
+  // When the filtered data slice changes, refresh the district heat scale and
+  // re-project dots without restarting the canvas animation loop.
+  useEffect(() => {
+    districtsRef.current = districts;
+    const counts = Object.fromEntries(
+      districts.map((d) => [d.name.toLowerCase(), d.value])
+    );
+    const values = districts.map((d) => d.value);
+    countsRef.current = {
+      counts,
+      min: values.length ? Math.min(...values) : 0,
+      max: values.length ? Math.max(...values) : 1,
+    };
+    layoutRef.current?.();
+  }, [districts]);
+
+  useEffect(() => {
+    layoutRef.current?.();
+  }, [dots]);
 
   useEffect(() => {
     let cancelled = false;
@@ -128,12 +152,8 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
     let resizeTimer = null;
     const animStart = performance.now();
 
-    const counts = Object.fromEntries(districts.map((d) => [d.name.toLowerCase(), d.value]));
-    const values = districts.map((d) => d.value);
-    const min = values.length ? Math.min(...values) : 0;
-    const max = values.length ? Math.max(...values) : 1;
-
     function fillFor(f) {
+      const { counts, min, max } = countsRef.current;
       const v = counts[(f.properties?.name || '').toLowerCase()];
       return v ? getColor(v, min, max, theme === 'dark') : 'var(--map-path)';
     }
@@ -170,23 +190,54 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
       );
       const collection = { type: 'FeatureCollection', features };
 
-      projection = d3.geoMercator().fitExtent([[12, 12], [w - 12, h - 12]], collection);
-      const z = zoomRef.current;
+      projection = buildProjection(collection, zoomRef.current, panRef.current);
+      renderLayers();
+    }
+
+    // Single source of truth for the projection: fitExtent → scale by z about the
+    // viewport centre → apply accumulated pan. Both button zoom, mouse-wheel,
+    // drag-pan and touch pinch all go through zoomRef/panRef, so the view survives
+    // resize / theme changes.
+    function buildProjection(collection, z, pan) {
+      const p = d3.geoMercator().fitExtent([[12, 12], [w - 12, h - 12]], collection);
       if (z !== 1) {
         // Zoom toward the current viewport center so the map never drifts off-screen.
         const cx = w / 2;
         const cy = h / 2;
-        const center = projection.invert([cx, cy]);
-        projection.scale(projection.scale() * z);
-        const p = projection(center);
-        const t = projection.translate();
-        projection.translate([t[0] + (cx - p[0]), t[1] + (cy - p[1])]);
+        const center = p.invert([cx, cy]);
+        p.scale(p.scale() * z);
+        const pp = p(center);
+        const t = p.translate();
+        p.translate([t[0] + (cx - pp[0]), t[1] + (cy - pp[1])]);
       }
       // Apply accumulated drag offset so panning survives zoom/resize/theme changes.
-      const t = projection.translate();
-      projection.translate([t[0] + panRef.current.dx, t[1] + panRef.current.dy]);
+      const t = p.translate();
+      p.translate([t[0] + pan.dx, t[1] + pan.dy]);
+      return p;
+    }
 
-      renderLayers();
+    // Coalesce rebuilds to one per animation frame (keeps pinch/drag smooth).
+    let layoutRaf = null;
+    function commitLayout() {
+      if (layoutRaf) return;
+      layoutRaf = requestAnimationFrame(() => {
+        layoutRaf = null;
+        layout();
+      });
+    }
+
+    // Zoom by `factor` keeping the geographic point currently under (cx, cy) fixed.
+    // Used by two-finger pinch and double-tap zoom.
+    function zoomAt(factor, cx, cy) {
+      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current * factor));
+      if (next === zoomRef.current) return;
+      const g = projection.invert([cx, cy]); // point under the fingers right now
+      const collection = { type: 'FeatureCollection', features };
+      const q = buildProjection(collection, next, { dx: 0, dy: 0 })(g);
+      zoomRef.current = next;
+      panRef.current = { dx: cx - q[0], dy: cy - q[1] };
+      setZoom(next);
+      commitLayout();
     }
 
     // Re-render districts (SVG) and recompute projected dots from the current projection.
@@ -251,56 +302,29 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
     raf = requestAnimationFrame(frame);
 
 
-    // --- Drag to pan ---
+    // --- Input handling (mouse + touch + pen via Pointer Events) ---
     let dragging = false;
     let lastX = 0;
     let lastY = 0;
-    let panRaf = null;
+    const pointers = new Map(); // pointerId -> {x, y} (client coords)
+    let pinchState = null; // { dist, midX, midY }
+    let tapState = null; // { x, y, t, moved } — tracks a possible tap
+    let lastTapAt = 0; // for double-tap detection
+    let lastTapPt = null;
 
     function panBy(dx, dy) {
       panRef.current.dx += dx;
       panRef.current.dy += dy;
-      const t = projection.translate();
-      projection.translate([t[0] + dx, t[1] + dy]);
-      // Throttle the SVG re-render; the canvas rAF loop repaints dots automatically.
-      if (!panRaf) {
-        panRaf = requestAnimationFrame(() => {
-          panRaf = null;
-          renderLayers();
-        });
-      }
+      commitLayout();
     }
 
-    const onMouseDown = (e) => {
-      dragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      canvas.style.cursor = 'grabbing';
-      setTooltip(null);
-    };
-
-    const onMouseUp = () => {
-      if (!dragging) return;
-      dragging = false;
-      canvas.style.cursor = 'grab';
-    };
-
-    // Unified hover: hit-test dots (if enabled) then districts via geoContains.
-    const onMove = (e) => {
-      // While dragging, just pan the map.
-      if (dragging) {
-        const dx = e.clientX - lastX;
-        const dy = e.clientY - lastY;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        panBy(dx, dy);
-        return;
-      }
-
+    function canvasPoint(e) {
       const rect = canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
 
+    // Unified hover / tap hit-test: dots (if enabled) then districts via geoContains.
+    function updateHover(x, y, clientX, clientY) {
       let hitDot = null;
       if (showDotsRef.current) {
         let best = 10;
@@ -329,39 +353,164 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
       }
       canvas.style.cursor = hitDot ? 'pointer' : 'grab';
 
+      // Keep the tooltip on-screen on small phones.
+      const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
+      const left = Math.max(8, Math.min(clientX + 14, vw - 224));
+
       if (hitDot) {
         setTooltip({
-          x: e.clientX,
-          y: e.clientY,
+          x: left,
+          y: clientY,
           title: hitDot.d.gss || hitDot.d.district,
           sub: `${hitDot.d.district} • ${hitDot.d.feeder || hitDot.d.division || '—'}`,
           extra: hitDot.d.reason || null,
         });
       } else if (hitFeature) {
         const name = hitFeature.properties?.name || 'Unknown district';
-        const v = counts[name.toLowerCase()];
+        const v = countsRef.current.counts[name.toLowerCase()];
         setTooltip({
-          x: e.clientX,
-          y: e.clientY,
+          x: left,
+          y: clientY,
           title: name,
           sub: v ? `${v} outage${v !== 1 ? 's' : ''}` : 'No recorded outages',
         });
       } else {
         setTooltip(null);
       }
+    }
+
+    const onPointerDown = (e) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return; // ignore right/middle
+      try {
+        canvas.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      setTooltip(null);
+
+      if (pointers.size === 1) {
+        dragging = true;
+        lastX = e.clientX;
+        lastY = e.clientY;
+        tapState = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false };
+        canvas.style.cursor = 'grabbing';
+      } else if (pointers.size === 2) {
+        dragging = false;
+        tapState = null;
+        const [a, b] = [...pointers.values()];
+        pinchState = {
+          dist: Math.hypot(a.x - b.x, a.y - b.y),
+          midX: (a.x + b.x) / 2,
+          midY: (a.y + b.y) / 2,
+        };
+        canvas.style.cursor = 'grabbing';
+      }
+      if (e.cancelable) e.preventDefault();
     };
 
-    const onLeave = () => {
+    const onPointerMove = (e) => {
+      if (pointers.has(e.pointerId)) {
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+
+      // Two-finger pinch → zoom around the pinch midpoint.
+      if (pointers.size === 2 && pinchState) {
+        const [a, b] = [...pointers.values()];
+        const dist = Math.hypot(a.x - b.x, a.y - b.y);
+        if (pinchState.dist > 0 && dist > 0) {
+          const rect = canvas.getBoundingClientRect();
+          const midX = (a.x + b.x) / 2 - rect.left;
+          const midY = (a.y + b.y) / 2 - rect.top;
+          zoomAt(dist / pinchState.dist, midX, midY);
+        }
+        pinchState.dist = dist;
+        if (e.cancelable) e.preventDefault();
+        return;
+      }
+
+      if (pointers.size === 1) {
+        if (dragging) {
+          // Drag to pan (mouse or touch).
+          const dx = e.clientX - lastX;
+          const dy = e.clientY - lastY;
+          lastX = e.clientX;
+          lastY = e.clientY;
+          if (tapState) tapState.moved = tapState.moved || Math.hypot(dx, dy) > 5;
+          if (dx || dy) panBy(dx, dy);
+          if (e.cancelable) e.preventDefault();
+          return;
+        }
+      }
+
+      // Mouse hover (no button pressed → no active pointers). Touch has no hover;
+      // taps show tooltips on pointerup instead.
+      if (pointers.size === 0 && e.pointerType === 'mouse' && !dragging) {
+        const pt = canvasPoint(e);
+        updateHover(pt.x, pt.y, e.clientX, e.clientY);
+      }
+    };
+
+    const onPointerUp = (e) => {
+      const isTouch = e.pointerType !== 'mouse';
+
+      // A quick tap (no drag) shows the tooltip; a second tap zooms in.
+      if (isTouch && tapState && !tapState.moved && pointers.size === 1) {
+        const dur = performance.now() - tapState.t;
+        if (dur < 600) {
+          const pt = canvasPoint(e);
+          const now = performance.now();
+          const isDoubleTap =
+            lastTapPt &&
+            now - lastTapAt < 350 &&
+            Math.hypot(pt.x - lastTapPt.x, pt.y - lastTapPt.y) < 44;
+          if (isDoubleTap) {
+            setTooltip(null);
+            zoomAt(ZOOM_STEP, pt.x, pt.y);
+          } else {
+            updateHover(pt.x, pt.y, e.clientX, e.clientY);
+          }
+          lastTapAt = now;
+          lastTapPt = pt;
+        }
+      }
+
+      pointers.delete(e.pointerId);
+      if (pointers.size < 2) pinchState = null;
+      if (pointers.size === 0) {
+        dragging = false;
+        tapState = null;
+        canvas.style.cursor = 'grab';
+      }
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+    };
+
+    const onPointerCancel = (e) => {
+      pointers.delete(e.pointerId);
+      pinchState = null;
+      if (pointers.size === 0) {
+        dragging = false;
+        tapState = null;
+        canvas.style.cursor = 'grab';
+      }
+      try {
+        canvas.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+    };
+
+    const onPointerLeave = () => {
       if (districtSelection) districtSelection.attr('fill', fillFor);
       if (!dragging) canvas.style.cursor = 'grab';
       setTooltip(null);
     };
 
-    canvas.addEventListener('mousedown', onMouseDown);
-    canvas.addEventListener('mousemove', onMove);
-    canvas.addEventListener('mouseleave', onLeave);
-    window.addEventListener('mouseup', onMouseUp);
+    canvas.addEventListener('pointerdown', onPointerDown);
+    canvas.addEventListener('pointermove', onPointerMove);
+    canvas.addEventListener('pointerup', onPointerUp);
+    canvas.addEventListener('pointercancel', onPointerCancel);
+    canvas.addEventListener('pointerleave', onPointerLeave);
     canvas.style.cursor = 'grab';
+    canvas.style.touchAction = 'none';
 
     // Debounced resize — avoids hammering the projection/layout code.
     const ro = new ResizeObserver(() => {
@@ -383,17 +532,18 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
 
     return () => {
       cancelAnimationFrame(raf);
-      if (panRaf) cancelAnimationFrame(panRaf);
+      if (layoutRaf) cancelAnimationFrame(layoutRaf);
       ro.disconnect();
       clearTimeout(resizeTimer);
-      canvas.removeEventListener('mousedown', onMouseDown);
-      canvas.removeEventListener('mousemove', onMove);
-      canvas.removeEventListener('mouseleave', onLeave);
-      window.removeEventListener('mouseup', onMouseUp);
+      canvas.removeEventListener('pointerdown', onPointerDown);
+      canvas.removeEventListener('pointermove', onPointerMove);
+      canvas.removeEventListener('pointerup', onPointerUp);
+      canvas.removeEventListener('pointercancel', onPointerCancel);
+      canvas.removeEventListener('pointerleave', onPointerLeave);
       canvas.removeEventListener('wheel', onWheel);
       layoutRef.current = null;
     };
-  }, [topo, theme, districts]);
+  }, [topo, theme]);
 
 
   return (
@@ -412,7 +562,16 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
           ref={svgRef}
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
         />
-        <canvas ref={canvasRef} style={{ position: 'absolute', inset: 0 }} />
+        <canvas
+          ref={canvasRef}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            touchAction: 'none', // let pan/pinch reach us instead of scrolling the page
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
+        />
       </div>
 
       {/* Zoom controls */}
@@ -463,7 +622,7 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
       </div>
 
       {tooltip && (
-        <div className="map-tooltip" style={{ left: tooltip.x + 14, top: tooltip.y - 12 }}>
+        <div className="map-tooltip" style={{ left: tooltip.x, top: tooltip.y - 12 }}>
           <div className="tt-title">{tooltip.title}</div>
           <div className="tt-sub">{tooltip.sub}</div>
           {tooltip.extra && (

@@ -5,11 +5,44 @@ Live planned &amp; ongoing power outage map for Odisha — Next.js frontend, Go 
 ## Architecture
 
 ```
-kavach.tpodisha.com  →  scrap.py        →  scrappedData/*.csv        (landing)
-                        process.py      →  data/mart/outages.json    (datamart, OSM-geocoded)
-                        backend/main.go →  :3001  serves UI + /api/*  (single port)
+kavach.tpodisha.com  →  scrap.py        →  scrappedData/*.csv            (landing, gitignored)
+                        process.py      →  data/odisha.db                (SQLite: raw + enriched)
+                                          data/mart/outages.json         (datamart, OSM-geocoded)
+                                          public/outage_data.json        (static snapshot for Pages)
+                        backend/main.go →  :3001  serves UI + /api/*     (single port)
                         Next.js         →  out/  (static export, served by Go)
 ```
+
+### SQLite raw-data store
+
+`process.py` ingests every scraped row into `data/odisha.db` before processing:
+
+- `raw_outages` — one row per raw outage, deduped by content hash and tagged with a
+  per-run `batch_id`, so raw history accumulates across scrapes.
+- `outages` — enriched rows (canonical district, lat/lon, `date`).
+- `meta` — bookkeeping (latest batch id).
+
+The datamart is always built from the **newest batch**; if `scrappedData/` is missing,
+`process.py` falls back to the latest batch already in SQLite.
+
+### Generalized district resolution
+
+`process.py` no longer trusts only the circle name. It resolves each record against
+`data/mappings/district_aliases.json` across its **division → subdivision → section →
+circle** fields (longest alias substring wins), then falls back to an exact circle map:
+
+- A row in the `PARADEEP` circle whose division is `KED-I, KENDRAPARA` → **Kendrapara**.
+- `ANED, ANGUL` → **Angul**, `NYED, NAYAGARH` → **Nayagarh**, `PED, PURI` → **Puri**,
+  `JED,JHARSUGUDA` → **Jharsuguda**, `DED,DEOGARH` → **Debagarh**, `SED,SONEPUR` → **Subarnapur**.
+- Spelling variants are normalized to the map's official GeoJSON names:
+  `Balasore`/`Baleswar` → **Baleshwar**, `Bolangir` → **Balangir**, `Keonjhar` → **Kendujhar**,
+  `Jagatsinghpur` → **Jagatsinghapur**, `Nabarangpur` → **Nabarangapur** (aliases pulled from
+  Wikipedia's district list + OSM + the feed itself).
+- Town aliases (e.g. `Kuakhia` → Kendrapara, `Rairangpur` → Mayurbhanj) cover divisions
+  named after towns rather than districts.
+
+District names in the datamart therefore always match the GeoJSON district polygons, so the
+choropleth fills and hover tooltips line up with the outage dots.
 
 ## Where to set ports
 
@@ -82,9 +115,29 @@ npm run build
 - Report wrong data: the dashboard's report button → `POST /api/report`
   (stored in `data/reports.json`).
 
+## Frontend date filter
+
+A date-range control sits just above the map. It drives everything downstream:
+
+- Outage dots on the map (re-projected live without restarting the pulse animation),
+- the district choropleth heat values,
+- the header stats and the details table.
+
+Presets (`Today`, `Next 7 days`, `Next 30 days`, `All`) plus free-form From/To date
+inputs are supported. Date parsing lives in `src/app/dateUtils.js` and handles both
+feed formats (`13-AUG-2026 10:00` and `12-08-2026 21:58`); enriched dots also carry a
+precomputed `date` (`YYYY-MM-DD`) field.
+
+If no backend is reachable (e.g. the static GitHub Pages build), the frontend falls
+back to `public/outage_data.json`, which `process.py` now writes as a full snapshot
+(dots included), so the map + date filter work without a server too.
+
 ## Useful scripts
 
 - `python scrap.py` — pull raw outage tables.
-- `python process.py` — geocode (OSM Nominatim, cached) + build `data/mart/outages.json`.
+- `python process.py` — ingest raw CSVs into SQLite, resolve districts (alias
+  matching), geocode (OSM Nominatim, cached), write `data/odisha.db` +
+  `data/mart/outages.json` + `public/outage_data.json`. Falls back to the latest
+  SQLite batch automatically when `scrappedData/` is empty.
 - `node scripts/compute_centroids.mjs` — regenerate district centroid fallbacks.
 
