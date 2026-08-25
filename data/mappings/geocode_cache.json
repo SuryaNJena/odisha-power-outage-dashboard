@@ -3973,5 +3973,285 @@
     "lat": null,
     "lon": null,
     "display": ""
+  },
+  "KHARADA|Rayagada": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PATALDA|Puri": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "ANANADPUR|Kendujhar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SHERAGADA|Ganjam": {
+    "lat": 19.5185672,
+    "lon": 84.6049146,
+    "display": "CHC, Sheragada, SH36, Badagarh, Seragad, Ganjam, Odisha, 761106, India"
+  },
+  "TIRIMALA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NARENDRAPUR|Ganjam": {
+    "lat": 19.3343487,
+    "lon": 84.8686552,
+    "display": "Narendrapur, Chhatrapur, Ganjam, Odisha, 760007, India"
+  },
+  "DAHAPADAR|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NILADRI VIHAR|Khordha": {
+    "lat": 20.1855839,
+    "lon": 85.6289662,
+    "display": "NILADRI VIHAR, Baseli Sahi, Khurdha Municipality Boundary, Khordha, Odisha, 752057, India"
+  },
+  "GHATAGAON|Kendujhar": {
+    "lat": 21.3927559,
+    "lon": 85.894962,
+    "display": "CHC, Ghatagaon, NH20, Ghatgaon, Kendujhar, Odisha, 758027, India"
+  },
+  "KALIAGAON|Koraput": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHHAPALI|Kendrapara": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "132/33KV DIGAPAHANDI GSS|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHANDRAGIRI|Rayagada": {
+    "lat": 19.383656,
+    "lon": 82.985333,
+    "display": "Chandragiri, Kashipur, Rayagada, Odisha, India"
+  },
+  "DIGAPAHANDI(C)|Ganjam": {
+    "lat": 19.3345967,
+    "lon": 84.5805408,
+    "display": "Digapahandi, Ganjam, Odisha, India"
+  },
+  "LEFRIPADA(P254)|Sundargarh": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "HINDOL ROAD|Dhenkanal": {
+    "lat": 20.7684042,
+    "lon": 85.4239195,
+    "display": "Hindol Road, NH55, GudiacateniChak, Motunga, Dhenkanal, Odisha, 759019, India"
+  },
+  "JANAPANKA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BAIDESWAR|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "DUAJHAR(P565)|Nuapada": {
+    "lat": 20.2341336,
+    "lon": 82.7483046,
+    "display": "Duājhar, Khariar, Nuapada, Odisha, 766118, India"
+  },
+  "SURANGI|Ganjam": {
+    "lat": 19.1604205,
+    "lon": 84.5266161,
+    "display": "Surangi, Jarada, Ganjam, Odisha, 761037, India"
+  },
+  "GANJAM(C)|Ganjam": {
+    "lat": 19.3952541,
+    "lon": 85.0462766,
+    "display": "Ganjam, NH16;NH516A, Puintola, Ganjam, Odisha, 761027, India"
+  },
+  "SARPESWAR|Cuttack": {
+    "lat": 20.4758673,
+    "lon": 85.7550247,
+    "display": "Sarpeswar, Naraj Bridge, Cuttack, Cuttack (M.Corp.) P.S, Cuttack, Odisha, 753001, India"
+  },
+  "KUHUDI|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "MARDAMUKHA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "INDUSTRIAL ESTATE|Angul": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHADEIDHARA (ODSSP)|Kendrapara": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHITRAKULA /BARABATI (ODSSP)|Kendrapara": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KOTAGADA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PATTAMUNDAI|Kendrapara": {
+    "lat": 20.5626441,
+    "lon": 86.5908069,
+    "display": "Pattamundai, Kendrapara, Odisha, India"
+  },
+  "SAGAR ODSSP|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CITY|Baleshwar": {
+    "lat": 21.5076224,
+    "lon": 86.9140788,
+    "display": "City Primary Hospital, Amrit Street, Baleshwar, Baleshwar (M), Baleshwar, Odisha, 756001, India"
+  },
+  "132/33KV BOUDH GSS|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "FATEGARH|Nayagarh": {
+    "lat": 20.2805386,
+    "lon": 85.2653049,
+    "display": "Fategarh, Nayagarh, Odisha, 752063, India"
+  },
+  "KHETRIBARPUR(KB PUR)|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BIRASAL|Dhenkanal": {
+    "lat": 20.9888624,
+    "lon": 85.6735137,
+    "display": "Primary Health Center, Birasal, Kamakshyanagar, Dhenkanal, Odisha, 759039, India"
+  },
+  "RAMBHIKATA|Kandhamal": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PHULAPADA|Angul": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JARAKA|Kendrapara": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHIKITI(C)|Ganjam": {
+    "lat": 19.2014309,
+    "lon": 84.614825,
+    "display": "Chikiti, Ganjam, Odisha, 761010, India"
+  },
+  "BOULANGA|Jajpur": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GUDVELLA(P470)|Balangir": {
+    "lat": 20.4163668,
+    "lon": 83.5684138,
+    "display": "CHC, Gudvella, Gurhbhela, Tushura, Balangir, Odisha, 767046, India"
+  },
+  "PITA MAHAL|Rayagada": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TUMUDIBANDHA|Kandhamal": {
+    "lat": 19.9894009,
+    "lon": 83.7432123,
+    "display": "Tumudibandha, Kandhamal, Odisha, 762109, India"
+  },
+  "FIRE STATION|Jajpur": {
+    "lat": 20.9723686,
+    "lon": 86.1243095,
+    "display": "Fire Station Chhak, Korai, Jajpur, Odisha, 755019, India"
+  },
+  "POTTANGI|Koraput": {
+    "lat": 18.5623322,
+    "lon": 82.9639413,
+    "display": "Pottangi, Koraput, Odisha, 764039, India"
+  },
+  "KAILASHPUR|Rayagada": {
+    "lat": 19.2269322,
+    "lon": 83.5414288,
+    "display": "Kailashpur, Rayagada, Odisha, 765017, India"
+  },
+  "PURUNABARIPADA|Mayurbhanj": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "TITIPA|Ganjam": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "KUNDULI|Koraput": {
+    "lat": 18.6069757,
+    "lon": 82.8863349,
+    "display": "Kunduli, Pottangi, Koraput, Odisha, India"
+  },
+  "KOCHILAKHUNTA|Mayurbhanj": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "GANASWARPUR|Baleshwar": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BUGUDA(C)|Ganjam": {
+    "lat": 19.8364159,
+    "lon": 84.8323682,
+    "display": "Buguda, Ganjam, Odisha, India"
+  },
+  "SANAMASIGAON|Koraput": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "RAHAMA|Jagatsinghapur": {
+    "lat": 20.2983235,
+    "lon": 86.404877,
+    "display": "Rahama, Cuttack - Paradip Road, Tirtol, Jagatsinghapur, Odisha, 754140, India"
+  },
+  "DUNGURA|Baleshwar": {
+    "lat": 21.223979,
+    "lon": 86.4752461,
+    "display": "Government Hospital, Dungura, Khaira, Baleshwar, Odisha, 756182, India"
+  },
+  "DHAMNAGAR (IPDS)|Bhadrak": {
+    "lat": 20.9114198,
+    "lon": 86.4377032,
+    "display": "Dhamnagar Municipality Hospital, Dhamanagar, Bhadrak, Odisha, 756117, India"
   }
 }

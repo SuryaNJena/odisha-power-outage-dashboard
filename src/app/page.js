@@ -1,25 +1,164 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Navigation from './navigation';
-import OdishaMap from './components/OdishaMap';
 import Dashboard from './components/Dashboard';
+import DateTimeKnob from './components/DateTimeKnob';
 import { BACKEND_MAPDATA_URL, DATA_URL } from './config';
-import { inDateRange, toDateKey } from './dateUtils';
 
-function keyOf(daysFromNow) {
-  const d = new Date();
-  d.setDate(d.getDate() + daysFromNow);
-  return toDateKey(d);
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const HOUR_MS = 3600000;
+const DAY_MS = 86400000;
+
+// Outage dates look like "10-AUG-2026 10:00" → Date (minutes captured too).
+function parseDateTime(str) {
+  if (!str) return null;
+  const m = String(str).trim().match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (!m) return null;
+  const month = MONTHS.indexOf(m[2].toUpperCase());
+  if (month === -1) return null;
+  const dt = new Date(Number(m[3]), month, Number(m[1]), m[4] ? Number(m[4]) : 0, m[5] ? Number(m[5]) : 0);
+  return Number.isNaN(dt.getTime()) ? null : dt;
 }
+
+// Snap to the nearest local hour (the minimum step). Uses local time so it works
+// in any timezone (e.g. IST is +05:30, so rounding epoch ms would break).
+function roundHour(ms) {
+  const d = new Date(ms);
+  d.setSeconds(0, 0);
+  if (d.getMinutes() >= 30) d.setHours(d.getHours() + 1);
+  d.setMinutes(0);
+  return d.getTime();
+}
+// Truncate to the start of the current local hour.
+function floorHour(ms) {
+  const d = new Date(ms);
+  d.setMinutes(0, 0, 0);
+  return d.getTime();
+}
+// Truncate to the next local hour boundary.
+function ceilHour(ms) {
+  const d = new Date(ms);
+  d.setMinutes(0, 0, 0);
+  if (d.getTime() < ms) d.setHours(d.getHours() + 1);
+  return d.getTime();
+}
+
+// An outage is "live" at time ms if it started at/before ms and hasn't ended yet.
+function isActiveAt(dot, ms) {
+  const s = parseDateTime(dot.start);
+  if (!s || s.getTime() > ms) return false;
+  if (dot.end) {
+    const e = parseDateTime(dot.end);
+    if (e && e.getTime() < ms) return false;
+  }
+  return true;
+}
+
+function formatSelected(ms) {
+  const d = new Date(ms);
+  const date = d.toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
+  });
+  const time = `${String(d.getHours()).padStart(2, '0')}:00`;
+  return `${date} ${time}`;
+}
+
+const OdishaMap = dynamic(() => import('./components/OdishaMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="card" style={{ padding: 8 }}>
+      <div
+        style={{
+          height: 'clamp(420px, 60vh, 640px)',
+          display: 'grid',
+          placeItems: 'center',
+          color: 'var(--text-muted)',
+          fontSize: 14,
+        }}
+      >
+        Loading map…
+      </div>
+    </div>
+  ),
+});
 
 export default function HomePage() {
   const [data, setData] = useState({ districts: [], dots: [], total: 0, updatedAt: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showDots, setShowDots] = useState(true);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [selectedMs, setSelectedMs] = useState(null);
+
+  // Selectable range spans every outage start/end time, floored/ceiled to the hour.
+  const timeRange = useMemo(() => {
+    let min = Infinity;
+    let max = -Infinity;
+    for (const d of data.dots) {
+      const s = parseDateTime(d.start);
+      if (s) {
+        min = Math.min(min, s.getTime());
+        max = Math.max(max, s.getTime());
+      }
+      if (d.end) {
+        const e = parseDateTime(d.end);
+        if (e) {
+          min = Math.min(min, e.getTime());
+          max = Math.max(max, e.getTime());
+        }
+      }
+    }
+    if (!Number.isFinite(min)) {
+      const now = Date.now();
+      return { min: now, max: now + DAY_MS };
+    }
+    return {
+      min: floorHour(min),
+      max: ceilHour(max),
+    };
+  }, [data.dots]);
+
+  // Default to the hour with the most outages live (fallback: the latest hour).
+  const defaultMs = useMemo(() => {
+    let best = null;
+    let bestCount = -1;
+    for (let t = timeRange.min; t <= timeRange.max; t += HOUR_MS) {
+      const c = data.dots.filter((d) => isActiveAt(d, t)).length;
+      if (c >= bestCount) {
+        bestCount = c;
+        best = t;
+      }
+    }
+    return best === null ? timeRange.max : best;
+  }, [data.dots, timeRange]);
+
+  // Keep the selection within range; default to the busiest hour.
+  const effectiveSelectedMs = useMemo(() => {
+    if (timeRange.max <= timeRange.min) return timeRange.max;
+    const candidate = selectedMs === null ? defaultMs : roundHour(selectedMs);
+    return Math.max(timeRange.min, Math.min(timeRange.max, candidate));
+  }, [timeRange, selectedMs, defaultMs]);
+
+  // Outages that are live at the selected hour.
+  const visibleDots = useMemo(
+    () => data.dots.filter((d) => isActiveAt(d, effectiveSelectedMs)),
+    [data.dots, effectiveSelectedMs]
+  );
+
+  // Recompute district heat counts for the selected hour.
+  const districtCounts = useMemo(() => {
+    const counts = {};
+    for (const d of visibleDots) {
+      if (d.district) counts[d.district] = (counts[d.district] || 0) + 1;
+    }
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [visibleDots]);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,7 +184,7 @@ export default function HomePage() {
         } catch (err2) {
           console.error(err2);
           if (!cancelled)
-            setError('Data unavailable. Start the Go backend (go run ./backend) then refresh.');
+            setError('Backend unavailable. Start the Go backend (go run ./backend) then refresh.');
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -56,33 +195,6 @@ export default function HomePage() {
       cancelled = true;
     };
   }, []);
-
-  // Dots filtered by the date range near the map. Everything below — the map
-  // dots, district heat values and the details table — reacts to this slice.
-  const filteredDots = useMemo(
-    () => data.dots.filter((d) => inDateRange(d, dateFrom || null, dateTo || null)),
-    [data.dots, dateFrom, dateTo]
-  );
-
-  const filteredDistricts = useMemo(() => {
-    const counts = {};
-    filteredDots.forEach((d) => {
-      counts[d.district] = (counts[d.district] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [filteredDots]);
-
-  function applyPreset(daysFromNow, span) {
-    if (span) {
-      setDateFrom(keyOf(daysFromNow));
-      setDateTo(keyOf(daysFromNow + span - 1));
-    } else {
-      setDateFrom('');
-      setDateTo('');
-    }
-  }
 
   const lastUpdated = useMemo(() => {
     if (!data.updatedAt) return 'N/A';
@@ -110,15 +222,15 @@ export default function HomePage() {
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
             <div className="card" style={{ padding: '10px 18px', textAlign: 'center' }}>
               <div className="stat-value" style={{ fontSize: 20, color: 'var(--accent)' }}>
-                {loading ? '…' : filteredDots.length}
+                {loading ? '…' : visibleDots.length}
               </div>
-              <div className="stat-label">Outages{dateFrom || dateTo ? ' (filtered)' : ''}</div>
+              <div className="stat-label">Outages (at time)</div>
             </div>
             <div className="card" style={{ padding: '10px 18px', textAlign: 'center' }}>
               <div className="stat-value" style={{ fontSize: 20 }}>
-                {loading ? '…' : filteredDistricts.length}
+                {loading ? '…' : districtCounts.length}
               </div>
-              <div className="stat-label">Districts{dateFrom || dateTo ? ' (filtered)' : ''}</div>
+              <div className="stat-label">Districts</div>
             </div>
           </div>
         </div>
@@ -139,81 +251,53 @@ export default function HomePage() {
         )}
 
         {/* Map controls */}
-        <div className="card control-row" style={{ padding: 12, marginBottom: 14, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="card" style={{ padding: 12, marginBottom: 14, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             View
           </span>
           <button
             className={showDots ? 'btn btn-accent' : 'btn'}
             onClick={() => setShowDots((v) => !v)}
-            title="Overlay outage dots on the heat map"
+            title="Overlay outage dots"
           >
             ⚡ Dots {showDots ? 'on' : 'off'}
           </button>
+          <button
+            className={showHeatmap ? 'btn btn-accent' : 'btn'}
+            onClick={() => setShowHeatmap((v) => !v)}
+            title="Toggle the district heat map layer"
+          >
+            🌡 Heatmap {showHeatmap ? 'on' : 'off'}
+          </button>
           <span style={{ color: 'var(--text-muted)', fontSize: 12, marginLeft: 'auto' }}>
-            {loading ? '…' : `${filteredDots.length} outage dots in range • canvas-rendered for smooth animation`}
+            {loading ? '…' : `${visibleDots.length} outages • ${formatSelected(effectiveSelectedMs)}`}
           </span>
         </div>
 
+        {/* Leaflet map: OSM base + translucent district heat + static dots on top */}
+        <OdishaMap dots={visibleDots} districts={districtCounts} showDots={showDots} showHeatmap={showHeatmap} />
 
-        {/* Date range filter — drives the map dots + heat map + details table */}
-        <div className="card control-row" style={{ padding: 12, marginBottom: 14, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Date
-          </span>
-          <input
-            type="date"
-            className="control"
-            value={dateFrom}
-            aria-label="From date"
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
-          <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>→</span>
-          <input
-            type="date"
-            className="control"
-            value={dateTo}
-            aria-label="To date"
-            onChange={(e) => setDateTo(e.target.value)}
-          />
-          <button
-            className={dateFrom === keyOf(0) && dateTo === keyOf(0) ? 'btn btn-accent' : 'btn'}
-            onClick={() => applyPreset(0, 1)}
-            title="Only today's outages"
-          >
-            Today
-          </button>
-          <button
-            className={dateFrom === keyOf(0) && dateTo === keyOf(6) ? 'btn btn-accent' : 'btn'}
-            onClick={() => applyPreset(0, 7)}
-            title="Next 7 days including today"
-          >
-            Next 7 days
-          </button>
-          <button
-            className={dateFrom === keyOf(0) && dateTo === keyOf(29) ? 'btn btn-accent' : 'btn'}
-            onClick={() => applyPreset(0, 30)}
-            title="Next 30 days including today"
-          >
-            Next 30 days
-          </button>
-          <button className={!dateFrom && !dateTo ? 'btn btn-accent' : 'btn'} onClick={() => applyPreset(0, 0)}>
-            All
-          </button>
-          <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: 12 }}>
-            {loading ? '…' : `${filteredDots.length} of ${data.dots.length} outages in range`}
-          </span>
-        </div>
-
-        {/* Merged map: choropleth base + optional dots overlay */}
-        <OdishaMap dots={filteredDots} districts={filteredDistricts} showDots={showDots} />
+        {/* Date-time dial: exact hourly selection, adaptive tick density, zoomable */}
+        {!loading && Number.isFinite(timeRange.min) && (
+          <div className="card" style={{ padding: 24, marginTop: 14 }}>
+            <div className="stat-label" style={{ textAlign: 'center', marginBottom: 6 }}>
+              Select date &amp; time
+            </div>
+            <DateTimeKnob
+              minMs={timeRange.min}
+              maxMs={timeRange.max}
+              valueMs={effectiveSelectedMs}
+              onChange={setSelectedMs}
+            />
+          </div>
+        )}
 
         {/* Dashboard with filters + report */}
         <div style={{ marginTop: 22 }}>
           <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 14, color: 'var(--text)' }}>
             Outage details
           </h2>
-          <Dashboard dots={filteredDots} />
+          <Dashboard dots={visibleDots} />
         </div>
       </div>
     </main>

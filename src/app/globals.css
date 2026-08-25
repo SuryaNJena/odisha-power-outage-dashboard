@@ -181,6 +181,7 @@ table.data-table {
   background: var(--bg-card);
 }
 
+/* Key areas affected cell (expand/collapse in the details table). */
 .areas-cell {
   background: none;
   border: none;
@@ -211,46 +212,49 @@ table.data-table {
   white-space: nowrap;
 }
 
-/* ---------- Map controls (zoom + legend) ---------- */
-.map-controls {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 10;
+/* ---------- Leaflet map overrides ---------- */
+.leaflet-container {
+  background: var(--map-bg);
+  font-family: inherit;
+  font-size: 13px;
 }
 
-.zoom-btn {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1;
-  cursor: pointer;
+.leaflet-bar {
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow) !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a,
+.leaflet-control-fit {
+  background: var(--bg-elev) !important;
+  color: var(--text) !important;
+  border-bottom: 1px solid var(--border) !important;
   display: grid;
   place-items: center;
+}
+
+.leaflet-bar a:last-child {
+  border-bottom: none !important;
+}
+
+.leaflet-bar a:hover,
+.leaflet-control-fit:hover {
+  background: var(--bg-card) !important;
+  color: var(--accent) !important;
+}
+
+.leaflet-control-fit {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
-  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
-}
-
-.zoom-btn:hover {
-  border-color: var(--accent);
-}
-
-.zoom-btn:active {
-  transform: translateY(1px);
-}
-
-.zoom-btn:disabled {
-  opacity: 0.4;
-  cursor: default;
-  border-color: var(--border);
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .map-legend {
@@ -263,63 +267,6 @@ table.data-table {
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
   padding: 8px 12px;
-}
-
-/* ---------- Touch / small-screen map + filter optimizations ---------- */
-
-/* Comfortable touch targets for the filter rows above the map. */
-.control-row .control,
-.control-row .btn {
-  min-height: 42px;
-}
-
-.zoom-btn {
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* Hide hover-only affordances on coarse pointers (e.g. cursor grab on phones). */
-@media (pointer: coarse) {
-  .zoom-btn:hover {
-    border-color: var(--border);
-  }
-}
-
-@media (max-width: 620px) {
-  .control-row {
-    align-items: stretch;
-  }
-  .control-row .control {
-    flex: 1 1 120px;
-    min-width: 0;
-    /* 16px keeps iOS Safari from auto-zooming into the date input. */
-    font-size: 16px;
-  }
-  .control-row .btn {
-    flex: 1 1 auto;
-    justify-content: center;
-    white-space: nowrap;
-  }
-  .zoom-btn {
-    width: 44px;
-    height: 44px;
-    font-size: 22px;
-    border-radius: 12px;
-  }
-  .map-controls {
-    top: 12px;
-    right: 12px;
-    gap: 7px;
-  }
-  .map-legend {
-    left: 10px;
-    bottom: 10px;
-    padding: 6px 10px;
-  }
-  .map-tooltip {
-    max-width: 200px;
-    font-size: 11px;
-    padding: 7px 10px;
-  }
 }
 
 /* ---------- Theme toggle ---------- */
@@ -342,11 +289,8 @@ table.data-table {
   background: var(--bg-card);
 }
 
-/* ---------- Tooltip ---------- */
-.map-tooltip {
-  position: fixed;
-  pointer-events: none;
-  z-index: 3000;
+/* ---------- Leaflet tooltip ---------- */
+.leaflet-tooltip.odisha-tooltip {
   background: var(--bg-elev);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -357,14 +301,131 @@ table.data-table {
   max-width: 260px;
 }
 
-.map-tooltip .tt-title {
+.leaflet-tooltip-top.odisha-tooltip::before {
+  border-top-color: var(--border);
+}
+
+.leaflet-tooltip-bottom.odisha-tooltip::before {
+  border-bottom-color: var(--border);
+}
+
+.odisha-tooltip .tt-title {
   font-weight: 700;
   margin-bottom: 2px;
 }
 
-.map-tooltip .tt-sub {
+.odisha-tooltip .tt-sub {
   color: var(--text-muted);
   font-size: 11px;
+}
+
+/* ---------- Date-time dial ---------- */
+.dtk {
+  position: relative;
+  max-width: 680px;
+  margin: 0 auto;
+  user-select: none;
+  outline: none;
+}
+
+.dtk-zoom {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-bottom: 2px;
+}
+
+.dtk-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.dtk-btn:hover {
+  border-color: var(--accent);
+}
+
+.dtk-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.dtk-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.dtk-svg:focus-visible {
+  outline: none;
+  border-radius: 10px;
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.dtk-band {
+  fill: var(--bg-elev);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.dtk-tick {
+  stroke: var(--border);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.dtk-tick.major {
+  stroke: var(--text-muted);
+  stroke-width: 2;
+}
+
+.dtk-label {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+.dtk-needle {
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+.dtk-needle-dot {
+  fill: var(--accent);
+  pointer-events: none;
+}
+
+.dtk-value {
+  text-align: center;
+  margin-top: 4px;
+}
+
+.dtk-date {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.dtk-time {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--accent);
+  letter-spacing: 0.02em;
 }
 
 /* ---------- Modal ---------- */

@@ -1,16 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import * as d3 from 'd3';
+import React, { useEffect, useRef, useState } from 'react';
 import * as topojson from 'topojson-client';
+import 'leaflet/dist/leaflet.css';
 import { MAP_URL } from '../config';
 import { useTheme } from '../theme';
 
 const MAX_DOTS = 600; // hard cap: beyond this, aggregate dots by substation
-const PULSE_RINGS = 2; // fewer rings = cheaper frames
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 8;
-const ZOOM_STEP = 1.35;
 
 // Heat scale: green (few) → yellow → orange → red (many).
 // Dark mode uses deeper tones so districts stay dark and the bright blue
@@ -32,6 +28,11 @@ const DARK_RAMP = [
 export const LEGEND_LIGHT = 'linear-gradient(90deg, #22c55e, #fbbf24, #f97316, #dc2626)';
 export const LEGEND_DARK = 'linear-gradient(90deg, #166534, #a16207, #9a3412, #7f1d1d)';
 
+// Theme-aware CARTO basemap tiles.
+function tileUrl(dark) {
+  return `https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`;
+}
+
 function heatColor(t, ramp) {
   const seg = t * (ramp.length - 1);
   const i = Math.min(Math.floor(seg), ramp.length - 2);
@@ -50,61 +51,63 @@ function getColor(value, min, max, dark) {
   return heatColor(t, dark ? DARK_RAMP : LIGHT_RAMP);
 }
 
+function escapeHtml(str) {
+  return String(str ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Resolve a CSS custom property to its concrete value (theme-aware).
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+// Cap dots: aggregate beyond MAX_DOTS by substation to keep the DOM cheap.
+function prepareDots(rawDots) {
+  if (rawDots.length <= MAX_DOTS) return rawDots;
+  const byGss = new Map();
+  rawDots.forEach((d) => {
+    const key = `${d.gss || ''}|${d.district}`;
+    const entry = byGss.get(key) || { ...d, count: 0 };
+    entry.count += 1;
+    byGss.set(key, entry);
+  });
+  return [...byGss.values()].slice(0, MAX_DOTS);
+}
+
+function districtTooltip(name, value) {
+  const sub = value ? `${value} outage${value !== 1 ? 's' : ''}` : 'No recorded outages';
+  return `<div class="tt-title">${escapeHtml(name)}</div><div class="tt-sub">${sub}</div>`;
+}
+
+function dotTooltip(d) {
+  const title = escapeHtml(d.gss || d.district || 'Outage');
+  const sub = `${escapeHtml(d.district || '—')} • ${escapeHtml(d.feeder || d.division || '—')}`;
+  const extra = d.reason ? `<div class="tt-sub" style="margin-top:3px">${escapeHtml(d.reason)}</div>` : '';
+  return `<div class="tt-title">${title}</div><div class="tt-sub">${sub}</div>${extra}`;
+}
+
 /**
- * Merged map view:
- *  - District choropleth fills (heat map) rendered once as a static SVG layer.
- *  - Outage dots drawn on an animated <canvas> overlay (cheap 60fps pulse).
- *  - Plus/minus zoom buttons re-project the whole map.
- *  - All hover hit-testing happens on the canvas so tooltips work with dots on OR off.
+ * Leaflet map view:
+ *  - Theme-aware CARTO basemap (dark_all / light_all) — the base OSM map shows
+ *    through a translucent district heat overlay.
+ *  - District choropleth (GeoJSON) using the same green→red heat ramp.
+ *  - Outage dots as static blue markers (capped at MAX_DOTS).
+ *  - Native Leaflet pan/zoom + a custom "zoom to fit" control.
  */
-function OdishaMap({ dots = [], districts = [], showDots = true }) {
+function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = true }) {
   const wrapRef = useRef(null);
-  const svgRef = useRef(null);
-  const canvasRef = useRef(null);
+  const leafRef = useRef(null);
+  const mapRef = useRef(null);
+  const tileLayerRef = useRef(null);
+  const districtLayerRef = useRef(null);
+  const dotLayerRef = useRef(null);
+  const resizeObserverRef = useRef(null);
+  const hasFittedRef = useRef(false);
   const [topo, setTopo] = useState(null);
-  const [tooltip, setTooltip] = useState(null);
-  const [zoom, setZoom] = useState(1);
+  const [ready, setReady] = useState(false);
   const { theme } = useTheme();
+  const dark = theme === 'dark';
 
-  // Refs let the animation loop read live props without restarting.
-  const dotsRef = useRef(dots);
-  const showDotsRef = useRef(showDots);
-  const zoomRef = useRef(1);
-  const panRef = useRef({ dx: 0, dy: 0 }); // accumulated drag offset
-  const layoutRef = useRef(null);
-  const projectedRef = useRef([]); // [{d, x, y, seed}]
-  // District heat data is kept in a ref so the animation loop + hover handlers
-  // always read the latest values while re-projection stays cheap.
-  const districtsRef = useRef(districts);
-  const countsRef = useRef({ counts: {}, min: 0, max: 1 });
-
-  useEffect(() => {
-    dotsRef.current = dots;
-  }, [dots]);
-  useEffect(() => {
-    showDotsRef.current = showDots;
-  }, [showDots]);
-
-  // When the filtered data slice changes, refresh the district heat scale and
-  // re-project dots without restarting the canvas animation loop.
-  useEffect(() => {
-    districtsRef.current = districts;
-    const counts = Object.fromEntries(
-      districts.map((d) => [d.name.toLowerCase(), d.value])
-    );
-    const values = districts.map((d) => d.value);
-    countsRef.current = {
-      counts,
-      min: values.length ? Math.min(...values) : 0,
-      max: values.length ? Math.max(...values) : 1,
-    };
-    layoutRef.current?.();
-  }, [districts]);
-
-  useEffect(() => {
-    layoutRef.current?.();
-  }, [dots]);
-
+  // Load the TopoJSON boundary file once.
   useEffect(() => {
     let cancelled = false;
     fetch(MAP_URL)
@@ -118,433 +121,193 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
     };
   }, []);
 
-  const zoomBy = useCallback((dir) => {
-    const next = Math.min(
-      MAX_ZOOM,
-      Math.max(MIN_ZOOM, zoomRef.current * (dir > 0 ? ZOOM_STEP : 1 / ZOOM_STEP))
-    );
-    if (next === zoomRef.current) return;
-    zoomRef.current = next;
-    setZoom(next);
-    layoutRef.current?.();
-  }, []);
-
-  // Reset zoom + pan back to the fitted default view.
-  const resetView = useCallback(() => {
-    zoomRef.current = MIN_ZOOM;
-    panRef.current = { dx: 0, dy: 0 };
-    setZoom(MIN_ZOOM);
-    layoutRef.current?.();
-  }, []);
-
-  // Main render effect: projection + static SVG districts + canvas dot loop + hover.
+  // Create the Leaflet map once (Leaflet is imported lazily so server-side
+  // prerendering never evaluates its browser globals).
   useEffect(() => {
-    if (!topo) return;
-    const wrap = wrapRef.current;
-    const svgEl = svgRef.current;
-    const canvas = canvasRef.current;
-    if (!wrap || !svgEl || !canvas) return;
-    const ctx = canvas.getContext('2d');
-
-    let w, h, dpr, projection, features;
-    let districtSelection = null;
-    let raf = null;
-    let resizeTimer = null;
-    const animStart = performance.now();
-
-    function fillFor(f) {
-      const { counts, min, max } = countsRef.current;
-      const v = counts[(f.properties?.name || '').toLowerCase()];
-      return v ? getColor(v, min, max, theme === 'dark') : 'var(--map-path)';
-    }
-
-    // Cap dots: aggregate beyond MAX_DOTS by substation to keep frames cheap.
-    function prepareDots(rawDots) {
-      if (rawDots.length <= MAX_DOTS) return rawDots;
-      const byGss = new Map();
-      rawDots.forEach((d) => {
-        const key = `${d.gss || ''}|${d.district}`;
-        const entry = byGss.get(key) || { ...d, count: 0 };
-        entry.count += 1;
-        byGss.set(key, entry);
+    if (mapRef.current) return;
+    let cancelled = false;
+    import('leaflet').then((mod) => {
+      if (cancelled) return;
+      const leaf = mod.default || mod;
+      leafRef.current = leaf;
+      const map = leaf.map(wrapRef.current, {
+        zoomControl: false,
+        scrollWheelZoom: true,
+        minZoom: 6,
+        maxZoom: 19,
       });
-      return [...byGss.values()].slice(0, MAX_DOTS);
-    }
+      leaf.control.zoom({ position: 'topright' }).addTo(map);
 
-    function layout() {
-      w = Math.max(wrap.clientWidth, 320);
-      h = Math.max(wrap.clientHeight, 420);
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = Math.floor(w * dpr);
-      canvas.height = Math.floor(h * dpr);
-      canvas.style.width = `${w}px`;
-      canvas.style.height = `${h}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      const key =
-        Object.keys(topo.objects).find((k) => k.toLowerCase().includes('district')) ||
-        Object.keys(topo.objects)[0];
-      const raw = topojson.feature(topo, topo.objects[key]);
-      features = (raw.type === 'FeatureCollection' ? raw.features : [raw]).filter(
-        (f) => (f.properties?.name || '').toLowerCase() !== 'odisha'
-      );
-      const collection = { type: 'FeatureCollection', features };
-
-      projection = buildProjection(collection, zoomRef.current, panRef.current);
-      renderLayers();
-    }
-
-    // Single source of truth for the projection: fitExtent → scale by z about the
-    // viewport centre → apply accumulated pan. Both button zoom, mouse-wheel,
-    // drag-pan and touch pinch all go through zoomRef/panRef, so the view survives
-    // resize / theme changes.
-    function buildProjection(collection, z, pan) {
-      const p = d3.geoMercator().fitExtent([[12, 12], [w - 12, h - 12]], collection);
-      if (z !== 1) {
-        // Zoom toward the current viewport center so the map never drifts off-screen.
-        const cx = w / 2;
-        const cy = h / 2;
-        const center = p.invert([cx, cy]);
-        p.scale(p.scale() * z);
-        const pp = p(center);
-        const t = p.translate();
-        p.translate([t[0] + (cx - pp[0]), t[1] + (cy - pp[1])]);
-      }
-      // Apply accumulated drag offset so panning survives zoom/resize/theme changes.
-      const t = p.translate();
-      p.translate([t[0] + pan.dx, t[1] + pan.dy]);
-      return p;
-    }
-
-    // Coalesce rebuilds to one per animation frame (keeps pinch/drag smooth).
-    let layoutRaf = null;
-    function commitLayout() {
-      if (layoutRaf) return;
-      layoutRaf = requestAnimationFrame(() => {
-        layoutRaf = null;
-        layout();
+      // Custom "zoom to fit" button (parity with the old reset-view button).
+      const FitControl = leaf.Control.extend({
+        options: { position: 'topright' },
+        onAdd() {
+          const btn = leaf.DomUtil.create('button', 'leaflet-control-fit');
+          btn.type = 'button';
+          btn.title = 'Zoom to fit (reset view)';
+          btn.setAttribute('aria-label', 'Zoom to fit');
+          btn.innerHTML = '⤢';
+          leaf.DomEvent.disableClickPropagation(btn);
+          leaf.DomEvent.on(btn, 'click', () => {
+            const layer = districtLayerRef.current;
+            if (layer && map) map.fitBounds(layer.getBounds(), { padding: [12, 12] });
+          });
+          return btn;
+        },
       });
-    }
+      new FitControl().addTo(map);
 
-    // Zoom by `factor` keeping the geographic point currently under (cx, cy) fixed.
-    // Used by two-finger pinch and double-tap zoom.
-    function zoomAt(factor, cx, cy) {
-      const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomRef.current * factor));
-      if (next === zoomRef.current) return;
-      const g = projection.invert([cx, cy]); // point under the fingers right now
-      const collection = { type: 'FeatureCollection', features };
-      const q = buildProjection(collection, next, { dx: 0, dy: 0 })(g);
-      zoomRef.current = next;
-      panRef.current = { dx: cx - q[0], dy: cy - q[1] };
-      setZoom(next);
-      commitLayout();
-    }
-
-    // Re-render districts (SVG) and recompute projected dots from the current projection.
-    function renderLayers() {
-      const path = d3.geoPath(projection);
-      const svg = d3.select(svgEl);
-      svg.selectAll('*').remove();
-      svg.attr('width', w).attr('height', h).style('background', 'var(--map-bg)');
-      const g = svg.append('g');
-      districtSelection = g
-        .selectAll('path.district')
-        .data(features)
-        .join('path')
-        .attr('d', path)
-        .attr('fill', fillFor)
-        .attr('stroke', 'var(--map-stroke)')
-        .attr('stroke-width', 0.7);
-
-      // Precompute projected dot positions (also used by canvas hit-testing).
-      const prepared = prepareDots(dotsRef.current);
-      projectedRef.current = prepared.map((d, i) => {
-        const p = projection([d.lon, d.lat]);
-        return { d, x: p[0], y: p[1], seed: ((i * 0.37) % 1) };
-      });
-    }
-
-    layout();
-    layoutRef.current = layout;
-
-    function drawDot(pt, elapsed, color, rBase) {
-      const { x, y, seed } = pt;
-      const phase = ((elapsed / 2600) + seed) % 1;
-      for (let i = 0; i < PULSE_RINGS; i++) {
-        const pp = (phase + i / PULSE_RINGS) % 1;
-        const r = rBase + pp * (rBase * 4);
-        ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.globalAlpha = (1 - pp) * 0.7;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 1.4;
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-      ctx.beginPath();
-      ctx.arc(x, y, rBase, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-    }
-
-    function frame(now) {
-      ctx.clearRect(0, 0, w, h);
-      if (showDotsRef.current) {
-        // Blue dots contrast against the green→red heat scale.
-        const color = theme === 'dark' ? '#60a5fa' : '#2563eb';
-        const elapsed = now - animStart;
-        // Dots scale with zoom so they stay proportional to the map.
-        const rBase = 3.5 + (zoomRef.current - 1) * 1.1;
-        for (const pt of projectedRef.current) drawDot(pt, elapsed, color, rBase);
-      }
-      raf = requestAnimationFrame(frame);
-    }
-    raf = requestAnimationFrame(frame);
-
-
-    // --- Input handling (mouse + touch + pen via Pointer Events) ---
-    let dragging = false;
-    let lastX = 0;
-    let lastY = 0;
-    const pointers = new Map(); // pointerId -> {x, y} (client coords)
-    let pinchState = null; // { dist, midX, midY }
-    let tapState = null; // { x, y, t, moved } — tracks a possible tap
-    let lastTapAt = 0; // for double-tap detection
-    let lastTapPt = null;
-
-    function panBy(dx, dy) {
-      panRef.current.dx += dx;
-      panRef.current.dy += dy;
-      commitLayout();
-    }
-
-    function canvasPoint(e) {
-      const rect = canvas.getBoundingClientRect();
-      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    }
-
-    // Unified hover / tap hit-test: dots (if enabled) then districts via geoContains.
-    function updateHover(x, y, clientX, clientY) {
-      let hitDot = null;
-      if (showDotsRef.current) {
-        let best = 10;
-        for (const pt of projectedRef.current) {
-          const dx = pt.x - x;
-          const dy = pt.y - y;
-          const dist = Math.hypot(dx, dy);
-          if (dist < best) {
-            best = dist;
-            hitDot = pt;
-          }
-        }
+      // Keep the map sized to its container (card is responsive).
+      if (typeof ResizeObserver !== 'undefined') {
+        const ro = new ResizeObserver(() => map.invalidateSize());
+        ro.observe(wrapRef.current);
+        resizeObserverRef.current = ro;
       }
 
-      const lonlat = projection.invert([x, y]);
-      let hitFeature = null;
-      if (!hitDot && isFinite(lonlat[0]) && isFinite(lonlat[1])) {
-        hitFeature = features.find((f) => d3.geoContains(f, lonlat)) || null;
-      }
-
-      // Highlight hovered district, restore others to their base color.
-      if (districtSelection) {
-        districtSelection.attr('fill', (f) =>
-          hitFeature && f === hitFeature ? 'var(--map-path-hover)' : fillFor(f)
-        );
-      }
-      canvas.style.cursor = hitDot ? 'pointer' : 'grab';
-
-      // Keep the tooltip on-screen on small phones.
-      const vw = typeof window !== 'undefined' ? window.innerWidth : 1200;
-      const left = Math.max(8, Math.min(clientX + 14, vw - 224));
-
-      if (hitDot) {
-        setTooltip({
-          x: left,
-          y: clientY,
-          title: hitDot.d.gss || hitDot.d.district,
-          sub: `${hitDot.d.district} • ${hitDot.d.feeder || hitDot.d.division || '—'}`,
-          extra: hitDot.d.reason || null,
-        });
-      } else if (hitFeature) {
-        const name = hitFeature.properties?.name || 'Unknown district';
-        const v = countsRef.current.counts[name.toLowerCase()];
-        setTooltip({
-          x: left,
-          y: clientY,
-          title: name,
-          sub: v ? `${v} outage${v !== 1 ? 's' : ''}` : 'No recorded outages',
-        });
-      } else {
-        setTooltip(null);
-      }
-    }
-
-    const onPointerDown = (e) => {
-      if (e.pointerType === 'mouse' && e.button !== 0) return; // ignore right/middle
-      try {
-        canvas.setPointerCapture(e.pointerId);
-      } catch (_) {}
-      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      setTooltip(null);
-
-      if (pointers.size === 1) {
-        dragging = true;
-        lastX = e.clientX;
-        lastY = e.clientY;
-        tapState = { x: e.clientX, y: e.clientY, t: performance.now(), moved: false };
-        canvas.style.cursor = 'grabbing';
-      } else if (pointers.size === 2) {
-        dragging = false;
-        tapState = null;
-        const [a, b] = [...pointers.values()];
-        pinchState = {
-          dist: Math.hypot(a.x - b.x, a.y - b.y),
-          midX: (a.x + b.x) / 2,
-          midY: (a.y + b.y) / 2,
-        };
-        canvas.style.cursor = 'grabbing';
-      }
-      if (e.cancelable) e.preventDefault();
-    };
-
-    const onPointerMove = (e) => {
-      if (pointers.has(e.pointerId)) {
-        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-      }
-
-      // Two-finger pinch → zoom around the pinch midpoint.
-      if (pointers.size === 2 && pinchState) {
-        const [a, b] = [...pointers.values()];
-        const dist = Math.hypot(a.x - b.x, a.y - b.y);
-        if (pinchState.dist > 0 && dist > 0) {
-          const rect = canvas.getBoundingClientRect();
-          const midX = (a.x + b.x) / 2 - rect.left;
-          const midY = (a.y + b.y) / 2 - rect.top;
-          zoomAt(dist / pinchState.dist, midX, midY);
-        }
-        pinchState.dist = dist;
-        if (e.cancelable) e.preventDefault();
-        return;
-      }
-
-      if (pointers.size === 1) {
-        if (dragging) {
-          // Drag to pan (mouse or touch).
-          const dx = e.clientX - lastX;
-          const dy = e.clientY - lastY;
-          lastX = e.clientX;
-          lastY = e.clientY;
-          if (tapState) tapState.moved = tapState.moved || Math.hypot(dx, dy) > 5;
-          if (dx || dy) panBy(dx, dy);
-          if (e.cancelable) e.preventDefault();
-          return;
-        }
-      }
-
-      // Mouse hover (no button pressed → no active pointers). Touch has no hover;
-      // taps show tooltips on pointerup instead.
-      if (pointers.size === 0 && e.pointerType === 'mouse' && !dragging) {
-        const pt = canvasPoint(e);
-        updateHover(pt.x, pt.y, e.clientX, e.clientY);
-      }
-    };
-
-    const onPointerUp = (e) => {
-      const isTouch = e.pointerType !== 'mouse';
-
-      // A quick tap (no drag) shows the tooltip; a second tap zooms in.
-      if (isTouch && tapState && !tapState.moved && pointers.size === 1) {
-        const dur = performance.now() - tapState.t;
-        if (dur < 600) {
-          const pt = canvasPoint(e);
-          const now = performance.now();
-          const isDoubleTap =
-            lastTapPt &&
-            now - lastTapAt < 350 &&
-            Math.hypot(pt.x - lastTapPt.x, pt.y - lastTapPt.y) < 44;
-          if (isDoubleTap) {
-            setTooltip(null);
-            zoomAt(ZOOM_STEP, pt.x, pt.y);
-          } else {
-            updateHover(pt.x, pt.y, e.clientX, e.clientY);
-          }
-          lastTapAt = now;
-          lastTapPt = pt;
-        }
-      }
-
-      pointers.delete(e.pointerId);
-      if (pointers.size < 2) pinchState = null;
-      if (pointers.size === 0) {
-        dragging = false;
-        tapState = null;
-        canvas.style.cursor = 'grab';
-      }
-      try {
-        canvas.releasePointerCapture(e.pointerId);
-      } catch (_) {}
-    };
-
-    const onPointerCancel = (e) => {
-      pointers.delete(e.pointerId);
-      pinchState = null;
-      if (pointers.size === 0) {
-        dragging = false;
-        tapState = null;
-        canvas.style.cursor = 'grab';
-      }
-      try {
-        canvas.releasePointerCapture(e.pointerId);
-      } catch (_) {}
-    };
-
-    const onPointerLeave = () => {
-      if (districtSelection) districtSelection.attr('fill', fillFor);
-      if (!dragging) canvas.style.cursor = 'grab';
-      setTooltip(null);
-    };
-
-    canvas.addEventListener('pointerdown', onPointerDown);
-    canvas.addEventListener('pointermove', onPointerMove);
-    canvas.addEventListener('pointerup', onPointerUp);
-    canvas.addEventListener('pointercancel', onPointerCancel);
-    canvas.addEventListener('pointerleave', onPointerLeave);
-    canvas.style.cursor = 'grab';
-    canvas.style.touchAction = 'none';
-
-    // Debounced resize — avoids hammering the projection/layout code.
-    const ro = new ResizeObserver(() => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(layout, 120);
+      mapRef.current = map;
+      setReady(true);
     });
-    ro.observe(wrap);
-
-    // Mouse-wheel zoom, throttled so it stays smooth and cheap.
-    let lastWheelAt = 0;
-    const onWheel = (e) => {
-      e.preventDefault();
-      const now = performance.now();
-      if (now - lastWheelAt < 80) return;
-      lastWheelAt = now;
-      zoomBy(e.deltaY < 0 ? 1 : -1);
-    };
-    canvas.addEventListener('wheel', onWheel, { passive: false });
-
     return () => {
-      cancelAnimationFrame(raf);
-      if (layoutRaf) cancelAnimationFrame(layoutRaf);
-      ro.disconnect();
-      clearTimeout(resizeTimer);
-      canvas.removeEventListener('pointerdown', onPointerDown);
-      canvas.removeEventListener('pointermove', onPointerMove);
-      canvas.removeEventListener('pointerup', onPointerUp);
-      canvas.removeEventListener('pointercancel', onPointerCancel);
-      canvas.removeEventListener('pointerleave', onPointerLeave);
-      canvas.removeEventListener('wheel', onWheel);
-      layoutRef.current = null;
+      cancelled = true;
+      if (resizeObserverRef.current) {
+        resizeObserverRef.current.disconnect();
+        resizeObserverRef.current = null;
+      }
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
     };
-  }, [topo, theme]);
+  }, []);
 
+  // Theme-aware CARTO basemap; swap the tile layer when the theme changes.
+  useEffect(() => {
+    if (!ready) return;
+    const map = mapRef.current;
+    const leaf = leafRef.current;
+    if (!map || !leaf) return;
+    if (tileLayerRef.current) map.removeLayer(tileLayerRef.current);
+    const layer = leaf.tileLayer(tileUrl(dark), {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    });
+    layer.addTo(map);
+    tileLayerRef.current = layer;
+  }, [ready, dark]);
+
+  // District choropleth: same heat ramp as the old SVG renderer, but as a
+  // Leaflet GeoJSON layer with hover highlight + tooltips.
+  useEffect(() => {
+    if (!ready || !topo) return;
+    const map = mapRef.current;
+    const leaf = leafRef.current;
+    if (!map || !leaf) return;
+
+    const counts = Object.fromEntries(districts.map((d) => [d.name.toLowerCase(), d.value]));
+    const values = districts.map((d) => d.value);
+    const min = values.length ? Math.min(...values) : 0;
+    const max = values.length ? Math.max(...values) : 1;
+    const mapPath = cssVar('--map-path');
+    const mapPathHover = cssVar('--map-path-hover');
+    const mapStroke = cssVar('--map-stroke');
+
+    const key =
+      Object.keys(topo.objects).find((k) => k.toLowerCase().includes('district')) ||
+      Object.keys(topo.objects)[0];
+    const raw = topojson.feature(topo, topo.objects[key]);
+    const features = (raw.type === 'FeatureCollection' ? raw.features : [raw]).filter(
+      (f) => (f.properties?.name || '').toLowerCase() !== 'odisha'
+    );
+    const collection = { type: 'FeatureCollection', features };
+
+    const districtStyle = (feature) => {
+      const v = counts[(feature.properties?.name || '').toLowerCase()];
+      return {
+        fillColor: v ? getColor(v, min, max, dark) : mapPath,
+        fillOpacity: dark ? 0.4 : 0.45,
+        color: mapStroke,
+        weight: 0.6,
+      };
+    };
+
+    if (districtLayerRef.current) map.removeLayer(districtLayerRef.current);
+
+    const layer = leaf.geoJSON(collection, {
+      style: districtStyle,
+      onEachFeature(feature, lyr) {
+        const name = feature.properties?.name || 'Unknown district';
+        const v = counts[name.toLowerCase()];
+        lyr.bindTooltip(districtTooltip(name, v), {
+          direction: 'top',
+          offset: [0, -6],
+          className: 'odisha-tooltip',
+        });
+        lyr.on('mouseover', () => {
+          lyr.setStyle({ fillColor: mapPathHover, fillOpacity: 0.9 });
+          lyr.bringToFront();
+        });
+        lyr.on('mouseout', () => lyr.setStyle(districtStyle(feature)));
+      },
+    });
+
+    if (!hasFittedRef.current) {
+      hasFittedRef.current = true;
+      map.fitBounds(layer.getBounds(), { padding: [12, 12], maxZoom: 9 });
+    }
+    if (showHeatmap) layer.addTo(map);
+    districtLayerRef.current = layer;
+  }, [ready, topo, dark, districts]);
+
+  // Toggle the district heat layer visibility. Dots live in a higher pane, so they
+  // always render on top of the heat map regardless.
+  useEffect(() => {
+    const map = mapRef.current;
+    const layer = districtLayerRef.current;
+    if (!map || !layer) return;
+    if (showHeatmap) {
+      if (!map.hasLayer(layer)) map.addLayer(layer);
+    } else if (map.hasLayer(layer)) {
+      map.removeLayer(layer);
+    }
+  }, [ready, showHeatmap, dark, districts, topo]);
+
+  // Outage dots: static blue markers (no animation), same data + tooltip
+  // content as the old canvas renderer.
+  useEffect(() => {
+    if (!ready) return;
+    const map = mapRef.current;
+    const leaf = leafRef.current;
+    if (!map || !leaf) return;
+
+    if (dotLayerRef.current) {
+      map.removeLayer(dotLayerRef.current);
+      dotLayerRef.current = null;
+    }
+    if (!showDots) return;
+
+    const dotColor = dark ? '#60a5fa' : '#2563eb';
+    const group = leaf.layerGroup();
+    for (const d of prepareDots(dots)) {
+      if (!Number.isFinite(d.lat) || !Number.isFinite(d.lon)) continue;
+      const m = leaf.circleMarker([d.lat, d.lon], {
+        radius: 4.5,
+        color: dotColor,
+        weight: 1.2,
+        fillColor: dotColor,
+        fillOpacity: 1,
+      });
+      m.bindTooltip(dotTooltip(d), {
+        direction: 'top',
+        offset: [0, -6],
+        className: 'odisha-tooltip',
+      });
+      group.addLayer(m);
+    }
+    group.addTo(map);
+    dotLayerRef.current = group;
+  }, [ready, dots, dark, showDots]);
 
   return (
     <div className="card" style={{ padding: 8, position: 'relative' }}>
@@ -552,57 +315,13 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
         ref={wrapRef}
         style={{
           position: 'relative',
+          zIndex: 0,
           width: '100%',
           height: 'clamp(420px, 60vh, 640px)',
-          overflow: 'hidden', // clip zoomed content cleanly inside the card
+          overflow: 'hidden',
           borderRadius: 'var(--radius-sm)',
         }}
-      >
-        <svg
-          ref={svgRef}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
-        />
-        <canvas
-          ref={canvasRef}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            touchAction: 'none', // let pan/pinch reach us instead of scrolling the page
-            userSelect: 'none',
-            WebkitUserSelect: 'none',
-          }}
-        />
-      </div>
-
-      {/* Zoom controls */}
-      <div className="map-controls">
-        <button
-          className="zoom-btn"
-          onClick={resetView}
-          title="Zoom to fit (reset view)"
-          aria-label="Zoom to fit"
-        >
-          ⤢
-        </button>
-        <button
-          className="zoom-btn"
-          onClick={() => zoomBy(1)}
-          disabled={zoom >= MAX_ZOOM}
-          title="Zoom in"
-          aria-label="Zoom in"
-        >
-          +
-        </button>
-        <button
-          className="zoom-btn"
-          onClick={() => zoomBy(-1)}
-          disabled={zoom <= MIN_ZOOM}
-          title="Zoom out"
-          aria-label="Zoom out"
-        >
-          −
-        </button>
-      </div>
+      />
 
       {/* Heat-map legend */}
       <div className="map-legend">
@@ -614,25 +333,17 @@ function OdishaMap({ dots = [], districts = [], showDots = true }) {
               width: 110,
               height: 10,
               borderRadius: 6,
-              background: theme === 'dark' ? LEGEND_DARK : LEGEND_LIGHT,
+              background: dark ? LEGEND_DARK : LEGEND_LIGHT,
             }}
           />
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Many</span>
         </div>
       </div>
-
-      {tooltip && (
-        <div className="map-tooltip" style={{ left: tooltip.x, top: tooltip.y - 12 }}>
-          <div className="tt-title">{tooltip.title}</div>
-          <div className="tt-sub">{tooltip.sub}</div>
-          {tooltip.extra && (
-            <div className="tt-sub" style={{ marginTop: 3 }}>{tooltip.extra}</div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
 
 export default React.memo(OdishaMap);
+
+
 
