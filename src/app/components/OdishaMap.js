@@ -28,9 +28,15 @@ const DARK_RAMP = [
 export const LEGEND_LIGHT = 'linear-gradient(90deg, #22c55e, #fbbf24, #f97316, #dc2626)';
 export const LEGEND_DARK = 'linear-gradient(90deg, #166534, #a16207, #9a3412, #7f1d1d)';
 
-// Theme-aware CARTO basemap tiles.
-function tileUrl(dark) {
-  return `https://{s}.basemaps.cartocdn.com/${dark ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`;
+// Theme-aware Esri World Gray Canvas basemap — free, no API key. (CARTO's
+// public basemap CDN now requires an API key, so we use Esri's canvas tiles:
+// a gray base with a transparent reference layer on top for labels.)
+function tileUrls(dark) {
+  const base = dark ? 'World_Dark_Gray_Base' : 'World_Light_Gray_Base';
+  const ref = dark ? 'World_Dark_Gray_Reference' : 'World_Light_Gray_Reference';
+  const tpl = (layer) =>
+    `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/${layer}/MapServer/tile/{z}/{y}/{x}`;
+  return { base: tpl(base), ref: tpl(ref) };
 }
 
 function heatColor(t, ramp) {
@@ -87,8 +93,8 @@ function dotTooltip(d) {
 
 /**
  * Leaflet map view:
- *  - Theme-aware CARTO basemap (dark_all / light_all) — the base OSM map shows
- *    through a translucent district heat overlay.
+ *  - Theme-aware Esri World Gray Canvas basemap (dark/light, free, no API key)
+ *    with a translucent district heat overlay on top.
  *  - District choropleth (GeoJSON) using the same green→red heat ramp.
  *  - Outage dots as static blue markers (capped at MAX_DOTS).
  *  - Native Leaflet pan/zoom + a custom "zoom to fit" control.
@@ -180,21 +186,31 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
     };
   }, []);
 
-  // Theme-aware CARTO basemap; swap the tile layer when the theme changes.
+  // Theme-aware Esri canvas basemap; swap the tile layers when the theme changes.
   useEffect(() => {
     if (!ready) return;
     const map = mapRef.current;
     const leaf = leafRef.current;
     if (!map || !leaf) return;
-    if (tileLayerRef.current) map.removeLayer(tileLayerRef.current);
-    const layer = leaf.tileLayer(tileUrl(dark), {
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+      tileLayerRef.current = null;
+    }
+    const urls = tileUrls(dark);
+    const opts = {
       attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    });
-    layer.addTo(map);
-    tileLayerRef.current = layer;
+        '&copy; Esri, HERE, Garmin, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, and the GIS User Community',
+      // Esri canvas services cap out at z16; keep the map zoomable by letting
+      // Leaflet over-zoom the top tiles instead of showing blank ones.
+      maxNativeZoom: 16,
+      maxZoom: 16,
+    };
+    const group = leaf.layerGroup([
+      leaf.tileLayer(urls.base, opts),
+      leaf.tileLayer(urls.ref, { ...opts, attribution: '' }),
+    ]);
+    group.addTo(map);
+    tileLayerRef.current = group;
   }, [ready, dark]);
 
   // District choropleth: same heat ramp as the old SVG renderer, but as a
@@ -320,6 +336,7 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
           height: 'clamp(420px, 60vh, 640px)',
           overflow: 'hidden',
           borderRadius: 'var(--radius-sm)',
+          background: 'var(--map-bg)',
         }}
       />
 

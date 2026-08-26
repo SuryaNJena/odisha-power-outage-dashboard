@@ -4278,5 +4278,80 @@
     "lat": 21.3223682,
     "lon": 86.82192,
     "display": "Gopalpur, Soro, Baleshwar, Odisha, 756044, India"
+  },
+  "DANDISAHI|Kendrapara": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PALAMANDAP|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BALIPADA|Khordha": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BUDHABAHAL(P415)|Balangir": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BODEN(P546)|Nuapada": {
+    "lat": 20.2618075,
+    "lon": 82.5209612,
+    "display": "Boden, Nuapada, Odisha, 766111, India"
+  },
+  "KARLAMUNDA(P558)|Kalahandi": {
+    "lat": 20.3552268,
+    "lon": 83.4415242,
+    "display": "CHC, Karlamunda, Madanpur Rampur, Kalahandi, Odisha, 766031, India"
+  },
+  "NILAGIRI|Baleshwar": {
+    "lat": 21.4630988,
+    "lon": 86.7443752,
+    "display": "Nilagiri, Baleshwar, Odisha, India"
+  },
+  "132/33KV BRAJARAJNAGAR GSS(ROURKELA)|Sundargarh": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SAMANGA|Puri": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "CHHAITANA|Puri": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "NARANGABASTA|Cuttack": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "PANIPOILA (BALUGAON)|Nayagarh": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "JORANDA|Dhenkanal": {
+    "lat": 20.7854015,
+    "lon": 85.7238833,
+    "display": "Joranda, Gandia, Dhenkanal, Odisha, 759014, India"
+  },
+  "AMBABANA(P322)|Bargarh": {
+    "lat": 21.3555299,
+    "lon": 83.6024567,
+    "display": "Bargarh Bhatili Ambabana road, Piplipāli, Dang, Bargarh, Odisha, 768028, India"
+  },
+  "KUMBHARIPUT|Koraput": {
+    "lat": 18.8486287,
+    "lon": 82.4914666,
+    "display": "Kumbhariput, Jeypore, Koraput, Odisha, 764005, India"
   }
 }

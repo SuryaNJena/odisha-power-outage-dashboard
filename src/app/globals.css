@@ -331,13 +331,61 @@ table.data-table {
 .dtk-zoom {
   display: flex;
   gap: 6px;
-  justify-content: flex-end;
-  margin-bottom: 2px;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.dtk-mode {
+  display: flex;
+  gap: 4px;
+}
+
+.dtk-mode-btn {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.dtk-mode-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.dtk-mode-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.dtk-now {
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--bg-elev);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.dtk-now:hover {
+  background: var(--accent);
+  color: var(--accent-contrast);
 }
 
 .dtk-btn {
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border-radius: 8px;
   background: var(--bg-elev);
   border: 1px solid var(--border);
@@ -399,20 +447,34 @@ table.data-table {
 }
 
 .dtk-needle {
-  stroke: var(--accent);
-  stroke-width: 3;
+  stroke: var(--red);
+  stroke-width: 4;
   stroke-linecap: round;
+  stroke-linejoin: round;
   pointer-events: none;
 }
 
 .dtk-needle-dot {
-  fill: var(--accent);
+  fill: var(--red);
+  pointer-events: none;
+}
+
+.dtk-shade {
+  pointer-events: none;
+}
+
+.dtk-window {
+  stroke: var(--red);
+  stroke-width: 56;
+  stroke-linecap: round;
+  fill: none;
+  opacity: 0.15;
   pointer-events: none;
 }
 
 .dtk-value {
   text-align: center;
-  margin-top: 4px;
+  margin-top: 0;
 }
 
 .dtk-date {
@@ -426,6 +488,14 @@ table.data-table {
   font-weight: 800;
   color: var(--accent);
   letter-spacing: 0.02em;
+}
+
+.dtk-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  opacity: 0.75;
+  margin-top: 0;
 }
 
 /* ---------- Modal ---------- */

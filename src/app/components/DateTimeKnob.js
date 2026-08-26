@@ -2,19 +2,25 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-// Date-time dial — exact hourly selection, adaptive tick density, zoomable range.
-// The band is a shallow curved "dial" (like a weighing scale). It is rendered as a
-// curve for looks, but x maps linearly to time, so the drag maps x → timestamp →
-// nearest 1-hour increment. The underlying step is always one hour regardless of how
-// many ticks are actually drawn.
+// Date-time dial — a scale printed around a horizontal drum (cylinder), read
+// under a static red V pointer (weighing-scale style). Time maps linearly to an
+// angle around the drum and the screen x follows sin(θ), so the scale bunches
+// toward the edges and spreads near the centre — the classic cylinder look.
+// Dragging rotates the drum; the selection is always under the pointer at the
+// centre. The selection is either a single point in time (start === end) or a
+// 24-hour window, in which case the V pointer expands to bracket the window.
 const HOUR_MS = 3600000;
 const DAY_MS = 86400000;
+const WINDOW_MS = 24 * HOUR_MS;
 const W = 640;
-const H = 172;
+const H = 300;
 const MARG = 24;
-const BAND = 18;
-const AMP = 16;
-const Y0 = 108;
+const BAND = 54;
+const ER = 20; // cylinder end-cap radius (x direction)
+const Y0 = 176; // cylinder axis / band centreline
+const VH = 46; // height of the V pointer arms above the band
+const TH_MAX = (80 * Math.PI) / 180; // visible half-angle around the drum
+const R = (W / 2 - MARG) / Math.sin(TH_MAX); // projection radius
 const ZOOM = 2.2;
 const MIN_VIEW_MS = 3 * HOUR_MS;
 const MAX_MAJOR = 14;
@@ -55,6 +61,9 @@ function fmtDate(d, curYear) {
       : { day: 'numeric', month: 'short', year: 'numeric' };
   return d.toLocaleDateString(undefined, opts);
 }
+function fmtClock(ms) {
+  return `${String(new Date(ms).getHours()).padStart(2, '0')}:00`;
+}
 function formatTick(ms, iv, curYear) {
   const d = new Date(ms);
   if (iv >= 30 * DAY_MS) {
@@ -62,24 +71,9 @@ function formatTick(ms, iv, curYear) {
     return d.toLocaleDateString(undefined, opts);
   }
   if (iv >= DAY_MS || d.getHours() === 0) return fmtDate(d, curYear);
-  return `${String(d.getHours()).padStart(2, '0')}:00`;
+  return fmtClock(ms);
 }
-function yCenterAt(f) {
-  return { x: MARG + f * (W - 2 * MARG), y: Y0 - AMP * Math.sin(Math.PI * f) };
-}
-function buildBandPath() {
-  const N = 80;
-  let d = '';
-  for (let i = 0; i <= N; i++) {
-    const p = yCenterAt(i / N);
-    d += (i ? 'L' : 'M') + p.x.toFixed(1) + ' ' + (p.y - BAND / 2).toFixed(1) + ' ';
-  }
-  for (let i = N; i >= 0; i--) {
-    const p = yCenterAt(i / N);
-    d += 'L' + p.x.toFixed(1) + ' ' + (p.y + BAND / 2).toFixed(1) + ' ';
-  }
-  return d + 'Z';
-}
+// Ticks for the currently visible window, drawn at their absolute positions.
 function buildTicks(viewStart, viewEnd) {
   const dur = Math.max(1, viewEnd - viewStart);
   const iv = pickInterval(dur);
@@ -99,34 +93,66 @@ function buildTicks(viewStart, viewEnd) {
   }
   return ticks;
 }
-export default function DateTimeKnob({ minMs, maxMs, valueMs, onChange }) {
+// Static "pill" silhouette of the cylinder side surface: straight top/bottom
+// edges with half-ellipse end caps, spanning the full dial width.
+function buildPillPath() {
+  const top = Y0 - BAND / 2;
+  const bot = Y0 + BAND / 2;
+  const L = ER;
+  const R = W - ER;
+  return (
+    `M ${L} ${top} L ${R} ${top} ` +
+    `A ${ER} ${BAND / 2} 0 0 1 ${W} ${Y0} ` +
+    `A ${ER} ${BAND / 2} 0 0 1 ${R} ${bot} ` +
+    `L ${L} ${bot} ` +
+    `A ${ER} ${BAND / 2} 0 0 1 0 ${Y0} ` +
+    `A ${ER} ${BAND / 2} 0 0 1 ${L} ${top} Z`
+  );
+}
+export default function DateTimeKnob({ minMs, maxMs, selection, onChange }) {
   const [view, setView] = useState({ start: minMs, end: maxMs });
   const svgRef = useRef(null);
   const dragging = useRef(false);
+  const lastX = useRef(null);
+
+  const sel =
+    selection && Number.isFinite(selection.start)
+      ? selection
+      : { start: minMs, end: minMs };
+  const rangeMs = Math.max(1, maxMs - minMs);
+  const windowMode = sel.end > sel.start;
+  const windowDur = Math.min(WINDOW_MS, rangeMs);
+  const selCenter = (sel.start + sel.end) / 2;
 
   useEffect(() => {
     setView({ start: minMs, end: maxMs });
   }, [minMs, maxMs]);
 
   const viewDur = Math.max(1, view.end - view.start);
-  const clampValue = useCallback((ms) => clamp(roundToHour(ms), minMs, maxMs), [minMs, maxMs]);
-
-  const applyClientX = useCallback(
-    (clientX) => {
-      const rect = svgRef.current.getBoundingClientRect();
-      const lx = (clientX - rect.left) * (W / rect.width);
-      const f = clamp((lx - MARG) / (W - 2 * MARG), 0, 1);
-      onChange(clampValue(view.start + f * viewDur));
+  // Cylindrical projection: time maps linearly to an angle around the drum and
+  // the screen x is R·sin(θ), so the scale bunches toward the edges like a scale
+  // printed on a cylinder. The selection is always under the centre pointer.
+  // Past ±90° the tape has rotated behind the drum, so it is parked off-screen.
+  const tapeX = useCallback(
+    (t) => {
+      const th = ((t - selCenter) / viewDur) * 2 * TH_MAX;
+      if (th < -Math.PI / 2) return -1000;
+      if (th > Math.PI / 2) return W + 1000;
+      return W / 2 + R * Math.sin(th);
     },
-    [onChange, clampValue, view.start, viewDur]
+    [selCenter, viewDur]
   );
+  // Inverse projection: drum angle at a screen x (drag rotates the drum).
+  const thetaAtScreenX = useCallback((x) => Math.asin(clamp((x - W / 2) / R, -1, 1)), []);
 
-  const zoomBy = useCallback(
-    (factor) => {
-      const sel = clampValue(valueMs);
-      const dur = clamp(viewDur * factor, MIN_VIEW_MS, maxMs - minMs);
-      let s = sel - dur / 2;
-      let e = sel + dur / 2;
+  // Emit a selection whose centre is c. With snap (drag release / keyboard), the
+  // centre is rounded to the nearest hour; while dragging it stays continuous so
+  // the scale follows the pointer smoothly. The zoom window is kept centred on
+  // the new centre so the scale always fills the dial.
+  const centeredView = useCallback(
+    (c, dur) => {
+      let s = c - dur / 2;
+      let e = c + dur / 2;
       if (s < minMs) {
         s = minMs;
         e = s + dur;
@@ -135,57 +161,94 @@ export default function DateTimeKnob({ minMs, maxMs, valueMs, onChange }) {
         e = maxMs;
         s = e - dur;
       }
-      setView({ start: Math.max(minMs, s), end: Math.min(maxMs, e) });
+      return { start: Math.max(minMs, s), end: Math.min(maxMs, e) };
     },
-    [clampValue, valueMs, viewDur, minMs, maxMs]
+    [minMs, maxMs]
   );
 
-  const setValueFollow = useCallback(
-    (ms) => {
-      const v = clampValue(ms);
-      onChange(v);
-      if (v < view.start || v > view.end) {
-        const dur = viewDur;
-        let s = v - dur / 2;
-        let e = v + dur / 2;
-        if (s < minMs) {
-          s = minMs;
-          e = s + dur;
-        }
-        if (e > maxMs) {
-          e = maxMs;
-          s = e - dur;
-        }
-        setView({ start: Math.max(minMs, s), end: Math.min(maxMs, e) });
+  const emitFromCenter = useCallback(
+    (c, snap) => {
+      const center = snap ? roundToHour(c) : c;
+      let next;
+      if (windowMode) {
+        const start = clamp(center - windowDur / 2, minMs, maxMs - windowDur);
+        next = { start, end: start + windowDur };
+      } else {
+        const ms = clamp(center, minMs, maxMs);
+        next = { start: ms, end: ms };
       }
+      onChange(next);
+      setView(centeredView((next.start + next.end) / 2, viewDur));
     },
-    [onChange, clampValue, view.start, view.end, viewDur, minMs, maxMs]
+    [onChange, windowMode, windowDur, minMs, maxMs, centeredView, viewDur]
   );
 
+  // Safety net for selection changes coming from outside (initial default, data
+  // reload, Now button): keep the zoom window centred on the selection.
+  const recenter = useCallback(() => {
+    setView(centeredView(selCenter, viewDur));
+  }, [centeredView, selCenter, viewDur]);
+
+  useEffect(() => {
+    recenter();
+  }, [recenter]);
+
+  const zoomBy = useCallback(
+    (factor) => {
+      const dur = clamp(viewDur * factor, MIN_VIEW_MS, maxMs - minMs);
+      setView(centeredView(selCenter, dur));
+    },
+    [viewDur, selCenter, maxMs, minMs, centeredView]
+  );
+
+  const toPoint = useCallback(() => {
+    const ms = roundToHour(selCenter);
+    onChange({ start: ms, end: ms });
+  }, [onChange, selCenter]);
+
+  const toWindow = useCallback(() => {
+    const start = clamp(selCenter - windowDur / 2, minMs, maxMs - windowDur);
+    onChange({ start, end: start + windowDur });
+  }, [onChange, selCenter, windowDur, minMs, maxMs]);
+
+  // Drag rotates the cylinder: pulling the scale right brings earlier times
+  // under the pointer. Snap to the nearest hour on release.
   const onPointerDown = (e) => {
     dragging.current = true;
+    lastX.current = e.clientX;
     e.currentTarget.setPointerCapture?.(e.pointerId);
-    applyClientX(e.clientX);
   };
   const onPointerMove = (e) => {
-    if (dragging.current) applyClientX(e.clientX);
+    if (!dragging.current || lastX.current === null) return;
+    const rect = svgRef.current.getBoundingClientRect();
+    const toLocal = (cx) => clamp(((cx - rect.left) * W) / rect.width, 0, W);
+    const x0 = toLocal(lastX.current);
+    const x1 = toLocal(e.clientX);
+    lastX.current = e.clientX;
+    if (x1 === x0) return;
+    // Rotate the drum so the surface point under the cursor follows it exactly.
+    const dTh = thetaAtScreenX(x1) - thetaAtScreenX(x0);
+    emitFromCenter(selCenter - (dTh / (2 * TH_MAX)) * viewDur, false);
   };
   const onPointerUp = (e) => {
+    if (!dragging.current) return;
     dragging.current = false;
+    lastX.current = null;
+    emitFromCenter(selCenter, true);
     e.currentTarget.releasePointerCapture?.(e.pointerId);
   };
 
   const onKeyDown = (e) => {
     let next = null;
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = valueMs - HOUR_MS;
-    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = valueMs + HOUR_MS;
-    else if (e.key === 'PageUp') next = valueMs - DAY_MS;
-    else if (e.key === 'PageDown') next = valueMs + DAY_MS;
-    else if (e.key === 'Home') next = minMs;
-    else if (e.key === 'End') next = maxMs;
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = selCenter - HOUR_MS;
+    else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = selCenter + HOUR_MS;
+    else if (e.key === 'PageUp') next = selCenter - DAY_MS;
+    else if (e.key === 'PageDown') next = selCenter + DAY_MS;
+    else if (e.key === 'Home') next = minMs + (windowMode ? windowDur / 2 : 0);
+    else if (e.key === 'End') next = maxMs - (windowMode ? windowDur / 2 : 0);
     else return;
     e.preventDefault();
-    setValueFollow(next);
+    emitFromCenter(next, true);
   };
 
   useEffect(() => {
@@ -199,39 +262,89 @@ export default function DateTimeKnob({ minMs, maxMs, valueMs, onChange }) {
     return () => el.removeEventListener('wheel', onWheel);
   }, [zoomBy]);
 
+  // ---- Geometry (recomputed each render) ----
+  const pillPath = buildPillPath();
+
+  // Soft red highlight along the band marking the selected window.
+  const hlX1 = clamp(tapeX(sel.start), 0, W);
+  const hlX2 = clamp(tapeX(sel.end), 0, W);
+  const highlightPath = windowMode && hlX2 - hlX1 > 1 ? `M ${hlX1.toFixed(1)} ${Y0} L ${hlX2.toFixed(1)} ${Y0}` : null;
+
   const ticks = buildTicks(view.start, view.end);
-  const fSel = clamp((valueMs - view.start) / viewDur, 0, 1);
-  const selPoint = yCenterAt(fSel);
-  const bandPath = buildBandPath();
-  const dt = new Date(valueMs);
-  const dateLine = fmtDate(dt, new Date().getFullYear());
-  const timeLine = `${String(dt.getHours()).padStart(2, '0')}:00`;
+  const tipY = Y0;
+  // Arms land on the window bounds (a small fixed spread keeps the V visible in
+  // point mode, where the window has zero width).
+  const armHalf = Math.max(6, (tapeX(sel.end) - tapeX(sel.start)) / 2);
+  const armL = clamp(W / 2 - armHalf, 16, W - 16);
+  const armR = clamp(W / 2 + armHalf, 16, W - 16);
+  const needlePath = `M ${armL.toFixed(1)} ${(tipY - VH).toFixed(1)} L ${(W / 2).toFixed(1)} ${tipY.toFixed(
+    1
+  )} L ${armR.toFixed(1)} ${(tipY - VH).toFixed(1)}`;
+
+  const curYear = new Date().getFullYear();
+  const dateLine = windowMode
+    ? `${fmtDate(new Date(sel.start), curYear)} ${fmtClock(sel.start)} – ${fmtDate(
+        new Date(sel.end),
+        curYear
+      )} ${fmtClock(sel.end)}`
+    : fmtDate(new Date(sel.start), curYear);
+  const timeLine = windowMode ? `${Math.round(windowDur / HOUR_MS)} h window` : fmtClock(sel.start);
   const canZoomIn = viewDur > MIN_VIEW_MS + 1;
   const canZoomOut = viewDur < maxMs - minMs - 1;
 
   return (
     <div className="dtk">
       <div className="dtk-zoom">
-        <button
-          type="button"
-          className="dtk-btn"
-          onClick={() => zoomBy(1 / ZOOM)}
-          disabled={!canZoomIn}
-          aria-label="Zoom in to finer time"
-          title="Zoom in"
-        >
-          +
-        </button>
-        <button
-          type="button"
-          className="dtk-btn"
-          onClick={() => zoomBy(ZOOM)}
-          disabled={!canZoomOut}
-          aria-label="Zoom out to coarser time"
-          title="Zoom out"
-        >
-          −
-        </button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div className="dtk-mode" role="group" aria-label="Selection mode">
+            <button
+              type="button"
+              className={windowMode ? 'dtk-mode-btn' : 'dtk-mode-btn active'}
+              onClick={toPoint}
+              title="Select a single point in time"
+            >
+              Point
+            </button>
+            <button
+              type="button"
+              className={windowMode ? 'dtk-mode-btn active' : 'dtk-mode-btn'}
+              onClick={toWindow}
+              title="Select a 24-hour window"
+            >
+              24 h
+            </button>
+          </div>
+          <button
+            type="button"
+            className="dtk-now"
+            onClick={() => emitFromCenter(Date.now(), true)}
+            title="Jump to the current time"
+          >
+            Now
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button
+            type="button"
+            className="dtk-btn"
+            onClick={() => zoomBy(1 / ZOOM)}
+            disabled={!canZoomIn}
+            aria-label="Zoom in to finer time"
+            title="Zoom in"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className="dtk-btn"
+            onClick={() => zoomBy(ZOOM)}
+            disabled={!canZoomOut}
+            aria-label="Zoom out to coarser time"
+            title="Zoom out"
+          >
+            −
+          </button>
+        </div>
       </div>
 
       <svg
@@ -243,59 +356,93 @@ export default function DateTimeKnob({ minMs, maxMs, valueMs, onChange }) {
         aria-label="Select date and time"
         aria-valuemin={minMs}
         aria-valuemax={maxMs}
-        aria-valuenow={valueMs}
-        aria-valuetext={`${dateLine} ${timeLine}`}
+        aria-valuenow={Math.round(selCenter)}
+        aria-valuetext={windowMode ? dateLine : `${dateLine} ${timeLine}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
         onKeyDown={onKeyDown}
       >
-        <path d={bandPath} className="dtk-band" />
+        <defs>
+          {/* Horizontal shading: the surface curves away toward the drum ends,
+              so it darkens at the left/right edges and brightens at the centre. */}
+          <linearGradient id="dtk-cyl" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="rgba(0,0,0,0.32)" />
+            <stop offset="22%" stopColor="rgba(0,0,0,0.03)" />
+            <stop offset="50%" stopColor="rgba(255,255,255,0.07)" />
+            <stop offset="78%" stopColor="rgba(0,0,0,0.03)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.32)" />
+          </linearGradient>
+          <clipPath id="dtk-clip">
+            <path d={pillPath} />
+          </clipPath>
+        </defs>
 
-        {ticks.map((t) => {
-          const p = yCenterAt((t.ms - view.start) / viewDur);
-          const len = t.major ? 15 : 9;
-          return (
-            <line
-              key={t.ms}
-              x1={p.x}
-              y1={p.y}
-              x2={p.x}
-              y2={p.y - len}
-              className={t.major ? 'dtk-tick major' : 'dtk-tick'}
-            />
-          );
-        })}
+        {/* Cylinder body */}
+        <path d={pillPath} className="dtk-band" />
 
-        {ticks
-          .filter((t) => t.major && t.label)
-          .map((t) => {
-            const p = yCenterAt((t.ms - view.start) / viewDur);
+        {/* Sliding content, clipped to the cylinder surface */}
+        <g clipPath="url(#dtk-clip)">
+          {highlightPath && <path d={highlightPath} className="dtk-window" />}
+
+          {ticks.map((t) => {
+            const x = tapeX(t.ms);
+            const inner = BAND / 2 - 3;
             return (
-              <text
-                key={'l' + t.ms}
-                x={clamp(p.x, 32, W - 32)}
-                y={p.y - 20}
-                textAnchor="middle"
-                className="dtk-label"
-              >
-                {t.label}
-              </text>
+              <line
+                key={t.ms}
+                x1={x.toFixed(1)}
+                y1={(Y0 - inner).toFixed(1)}
+                x2={x.toFixed(1)}
+                y2={t.major ? (Y0 + inner).toFixed(1) : (Y0 + 3).toFixed(1)}
+                className={t.major ? 'dtk-tick major' : 'dtk-tick'}
+              />
             );
           })}
 
-        {/* Needle */}
-        <line x1={selPoint.x} y1={selPoint.y + 8} x2={selPoint.x} y2={selPoint.y - 20} className="dtk-needle" />
-        <circle cx={selPoint.x} cy={selPoint.y} r={4.5} className="dtk-needle-dot" />
+          {(() => {
+            const els = [];
+            let lastLX = -Infinity;
+            for (const t of ticks) {
+              if (!t.major || !t.label) continue;
+              const raw = tapeX(t.ms);
+              if (raw < 0 || raw > W) continue; // rotated behind the drum
+              const x = clamp(raw, 32, W - 32);
+              // Keep labels clear of the V pointer (centre) and of each other
+              // where the cylinder projection compresses them near the edges.
+              if (Math.abs(x - W / 2) < 22) continue;
+              if (Math.abs(x - lastLX) < 22) continue;
+              lastLX = x;
+              els.push(
+                <text
+                  key={'l' + t.ms}
+                  x={x.toFixed(1)}
+                  y={(Y0 - 2).toFixed(1)}
+                  textAnchor="middle"
+                  className="dtk-label"
+                >
+                  {t.label}
+                </text>
+              );
+            }
+            return els;
+          })()}
+        </g>
+
+        {/* Cylinder shading (fixed, so the sliding tape reads as rotation) */}
+        <path d={pillPath} fill="url(#dtk-cyl)" className="dtk-shade" />
+
+        {/* Static V pointer (red, weighing-scale style); expands to the window bounds */}
+        <path d={needlePath} className="dtk-needle" />
+        <circle cx={W / 2} cy={tipY} r={3.4} className="dtk-needle-dot" />
       </svg>
 
       <div className="dtk-value">
         <div className="dtk-date">{dateLine}</div>
         <div className="dtk-time">{timeLine}</div>
       </div>
+      <div className="dtk-hint">Drag to rotate the scale • Scroll to zoom</div>
     </div>
   );
 }
-
-

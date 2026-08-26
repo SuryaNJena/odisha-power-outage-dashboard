@@ -22,15 +22,6 @@ function parseDateTime(str) {
   return Number.isNaN(dt.getTime()) ? null : dt;
 }
 
-// Snap to the nearest local hour (the minimum step). Uses local time so it works
-// in any timezone (e.g. IST is +05:30, so rounding epoch ms would break).
-function roundHour(ms) {
-  const d = new Date(ms);
-  d.setSeconds(0, 0);
-  if (d.getMinutes() >= 30) d.setHours(d.getHours() + 1);
-  d.setMinutes(0);
-  return d.getTime();
-}
 // Truncate to the start of the current local hour.
 function floorHour(ms) {
   const d = new Date(ms);
@@ -45,25 +36,36 @@ function ceilHour(ms) {
   return d.getTime();
 }
 
-// An outage is "live" at time ms if it started at/before ms and hasn't ended yet.
-function isActiveAt(dot, ms) {
+// An outage is visible if it overlaps the selection window { start, end }.
+// For a point selection start === end, so this is the same as "live at ms".
+function inSelection(dot, sel) {
   const s = parseDateTime(dot.start);
-  if (!s || s.getTime() > ms) return false;
+  if (!s || s.getTime() > sel.end) return false;
   if (dot.end) {
     const e = parseDateTime(dot.end);
-    if (e && e.getTime() < ms) return false;
+    if (e && e.getTime() < sel.start) return false;
   }
   return true;
 }
 
-function formatSelected(ms) {
-  const d = new Date(ms);
+function formatSelection(sel) {
+  const d = new Date(sel.start);
   const date = d.toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'short',
     year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
   });
   const time = `${String(d.getHours()).padStart(2, '0')}:00`;
+  if (sel.end > sel.start) {
+    const e = new Date(sel.end);
+    const edate = e.toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: e.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
+    });
+    const etime = `${String(e.getHours()).padStart(2, '0')}:00`;
+    return `${date} ${time} – ${edate} ${etime}`;
+  }
   return `${date} ${time}`;
 }
 
@@ -92,7 +94,8 @@ export default function HomePage() {
   const [error, setError] = useState('');
   const [showDots, setShowDots] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
-  const [selectedMs, setSelectedMs] = useState(null);
+  // Selection window { start, end }; start === end means a single point in time.
+  const [selection, setSelection] = useState(null);
 
   // Selectable range spans every outage start/end time, floored/ceiled to the hour.
   const timeRange = useMemo(() => {
@@ -127,7 +130,7 @@ export default function HomePage() {
     let best = null;
     let bestCount = -1;
     for (let t = timeRange.min; t <= timeRange.max; t += HOUR_MS) {
-      const c = data.dots.filter((d) => isActiveAt(d, t)).length;
+      const c = data.dots.filter((d) => inSelection(d, { start: t, end: t })).length;
       if (c >= bestCount) {
         bestCount = c;
         best = t;
@@ -136,17 +139,24 @@ export default function HomePage() {
     return best === null ? timeRange.max : best;
   }, [data.dots, timeRange]);
 
-  // Keep the selection within range; default to the busiest hour.
-  const effectiveSelectedMs = useMemo(() => {
-    if (timeRange.max <= timeRange.min) return timeRange.max;
-    const candidate = selectedMs === null ? defaultMs : roundHour(selectedMs);
-    return Math.max(timeRange.min, Math.min(timeRange.max, candidate));
-  }, [timeRange, selectedMs, defaultMs]);
+  // Keep the selection within range; default to the busiest hour (point mode).
+  // A window is at most 24 h and shrinks to the full range when it is shorter.
+  const effectiveSelection = useMemo(() => {
+    if (timeRange.max <= timeRange.min) return { start: timeRange.max, end: timeRange.max };
+    const raw = selection ?? { start: defaultMs, end: defaultMs };
+    if (raw.end > raw.start) {
+      const dur = Math.min(DAY_MS, timeRange.max - timeRange.min);
+      const start = Math.max(timeRange.min, Math.min(raw.start, timeRange.max - dur));
+      return { start, end: start + dur };
+    }
+    const ms = Math.max(timeRange.min, Math.min(timeRange.max, raw.start));
+    return { start: ms, end: ms };
+  }, [timeRange, selection, defaultMs]);
 
-  // Outages that are live at the selected hour.
+  // Outages that overlap the selected window (a point when start === end).
   const visibleDots = useMemo(
-    () => data.dots.filter((d) => isActiveAt(d, effectiveSelectedMs)),
-    [data.dots, effectiveSelectedMs]
+    () => data.dots.filter((d) => inSelection(d, effectiveSelection)),
+    [data.dots, effectiveSelection]
   );
 
   // Recompute district heat counts for the selected hour.
@@ -224,7 +234,7 @@ export default function HomePage() {
               <div className="stat-value" style={{ fontSize: 20, color: 'var(--accent)' }}>
                 {loading ? '…' : visibleDots.length}
               </div>
-              <div className="stat-label">Outages (at time)</div>
+              <div className="stat-label">Outages (selection)</div>
             </div>
             <div className="card" style={{ padding: '10px 18px', textAlign: 'center' }}>
               <div className="stat-value" style={{ fontSize: 20 }}>
@@ -270,7 +280,7 @@ export default function HomePage() {
             🌡 Heatmap {showHeatmap ? 'on' : 'off'}
           </button>
           <span style={{ color: 'var(--text-muted)', fontSize: 12, marginLeft: 'auto' }}>
-            {loading ? '…' : `${visibleDots.length} outages • ${formatSelected(effectiveSelectedMs)}`}
+            {loading ? '…' : `${visibleDots.length} outages • ${formatSelection(effectiveSelection)}`}
           </span>
         </div>
 
@@ -279,15 +289,15 @@ export default function HomePage() {
 
         {/* Date-time dial: exact hourly selection, adaptive tick density, zoomable */}
         {!loading && Number.isFinite(timeRange.min) && (
-          <div className="card" style={{ padding: 24, marginTop: 14 }}>
-            <div className="stat-label" style={{ textAlign: 'center', marginBottom: 6 }}>
-              Select date &amp; time
+          <div className="card" style={{ maxWidth: 700, margin: '6px auto 0', padding: '4px 12px 6px' }}>
+            <div className="stat-label" style={{ textAlign: 'center', marginBottom: 0 }}>
+              Select date &amp; time (point or 24 h window)
             </div>
             <DateTimeKnob
               minMs={timeRange.min}
               maxMs={timeRange.max}
-              valueMs={effectiveSelectedMs}
-              onChange={setSelectedMs}
+              selection={effectiveSelection}
+              onChange={setSelection}
             />
           </div>
         )}
