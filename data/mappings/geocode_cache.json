@@ -4253,5 +4253,30 @@
     "lat": 20.9114198,
     "lon": 86.4377032,
     "display": "Dhamnagar Municipality Hospital, Dhamanagar, Bhadrak, Odisha, 756117, India"
+  },
+  "GHODABAZAR|Puri": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "BANKI-2|Khordha": {
+    "lat": 20.1765424,
+    "lon": 85.6155744,
+    "display": "State Bank of India KHURDHA 2, Khurda Main Road, BDA Colony, Khurdha Municipality Boundary, Khordha, Odisha, 752057, India"
+  },
+  "KANTABANIA|Mayurbhanj": {
+    "lat": null,
+    "lon": null,
+    "display": ""
+  },
+  "SERAGARH|Baleshwar": {
+    "lat": 21.4413454,
+    "lon": 86.8389624,
+    "display": "PHC, Seragarh, Nilagiri Road, Baleshwar Sadar, Baleshwar, Odisha, 756060, India"
+  },
+  "GOPALPUR|Baleshwar": {
+    "lat": 21.3223682,
+    "lon": 86.82192,
+    "display": "Gopalpur, Soro, Baleshwar, Odisha, 756044, India"
   }
 }
