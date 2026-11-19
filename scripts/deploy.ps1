@@ -92,7 +92,8 @@ git reset > .tmp\pack-reset.log 2>&1
   if ($LASTEXITCODE -ne 0) { Get-Content .tmp\upload4.log -Tail 20; throw 'scp env failed' }
 
   Step 'extracting source on server'
-  cmd /c "ssh -o BatchMode=yes $remote `"tar -xzf /tmp/odisha-src.tgz -C $remoteDir --strip-components=1 && chmod +x /tmp/deploy_remote.sh`" > .tmp\extract.log 2>&1"
+  # NOTE: `git archive` paths have no leading "./", so do NOT strip components.
+  cmd /c "ssh -o BatchMode=yes $remote `"tar -xzf /tmp/odisha-src.tgz -C $remoteDir && chmod +x /tmp/deploy_remote.sh`" > .tmp\extract.log 2>&1"
   if ($LASTEXITCODE -ne 0) { Get-Content .tmp\extract.log -Tail 30; throw 'extract failed' }
 
   if (-not $NoUp) {

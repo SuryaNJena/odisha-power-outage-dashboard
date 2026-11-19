@@ -6,9 +6,9 @@ import { BASE_PATH } from './config';
 import { useTheme } from './theme';
 
 const LINKS = [
-  { href: '/', label: 'Home', icon: '🗺️' },
-  { href: '/live', label: 'Live NRT', icon: '📡' },
-  { href: '/reliability', label: 'Reliability', icon: '📊' },
+  { href: '/', label: 'Home' },
+  { href: '/live', label: 'Live NRT' },
+  { href: '/reliability', label: 'Reliability' },
 ];
 
 /**
@@ -26,73 +26,79 @@ function cleanPathname(pathname) {
   return path || '/';
 }
 
+function BoltIcon() {
+  return (
+    <svg
+      className="brand-mark"
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="currentColor"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M13.1 2 4.5 13.6h5.9L9.2 22l8.7-11.9h-5.9L13.1 2Z" />
+    </svg>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg
+      className="theme-icon"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2.6v2.1M12 19.3v2.1M2.6 12h2.1M19.3 12h2.1M5.4 5.4l1.5 1.5M17.1 17.1l1.5 1.5M18.6 5.4l-1.5 1.5M6.9 17.1l-1.5 1.5" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg
+      className="theme-icon"
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M20.1 14.6A8.1 8.1 0 0 1 9.4 3.9a8.1 8.1 0 1 0 10.7 10.7Z" />
+    </svg>
+  );
+}
+
 const Navigation = () => {
   const { theme, toggle } = useTheme();
   const pathname = usePathname();
   const current = cleanPathname(pathname);
+  const isDark = theme === 'dark';
 
   return (
-    <nav
-      style={{
-        background: 'var(--bg-elev)',
-        borderBottom: '1px solid var(--border)',
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 2000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 8,
-        height: 56,
-        paddingRight: 16,
-        backdropFilter: 'blur(10px)',
-      }}
-    >
-      {/* Brand */}
-      <div
-        style={{
-          padding: '0 1.1rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.55rem',
-          flex: '0 0 auto',
-          minWidth: 0,
-        }}
-      >
-        <span style={{ fontSize: 20 }} aria-hidden="true">⚡</span>
-        <span
-          className="nav-brand-label"
-          style={{
-            color: 'var(--accent)',
-            fontWeight: 800,
-            fontSize: 13,
-            letterSpacing: '0.06em',
-            textTransform: 'uppercase',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Odisha Power Outage
+    <nav className="top-nav" aria-label="Primary">
+      <div className="nav-brand">
+        <span className="nav-brand-mark" aria-hidden="true">
+          <BoltIcon />
         </span>
-        <span
-          className="nav-tagline"
-          style={{
-            color: 'var(--text-muted)',
-            fontSize: 11,
-            fontWeight: 500,
-            letterSpacing: '0.03em',
-            borderLeft: '1px solid var(--border)',
-            paddingLeft: 10,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          Live grid intelligence
-        </span>
+        <span className="nav-brand-label">Odisha Power Outage</span>
+        <span className="nav-tagline">Live grid intelligence</span>
       </div>
 
-      {/* Primary navigation — horizontally scrollable on narrow screens */}
-      <div className="nav-links" aria-label="Primary navigation">
+      <div className="nav-links">
         {LINKS.map((link) => {
           const active = current === link.href;
           return (
@@ -102,24 +108,24 @@ const Navigation = () => {
               className={active ? 'nav-link active' : 'nav-link'}
               aria-current={active ? 'page' : undefined}
             >
-              <span aria-hidden="true">{link.icon}</span>
-              <span>{link.label}</span>
+              {link.label}
             </Link>
           );
         })}
       </div>
 
-      {/* Theme toggle */}
-      <button
-        className="theme-toggle"
-        type="button"
-        onClick={toggle}
-        aria-label="Toggle theme"
-        title="Toggle light / dark mode"
-        style={{ flex: '0 0 auto' }}
-      >
-        {theme === 'dark' ? '☀️' : '🌙'}
-      </button>
+      <div className="nav-actions">
+        <button
+          className="theme-toggle"
+          type="button"
+          onClick={toggle}
+          aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+          aria-pressed={isDark}
+          title={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+        >
+          {isDark ? <SunIcon /> : <MoonIcon />}
+        </button>
+      </div>
     </nav>
   );
 };

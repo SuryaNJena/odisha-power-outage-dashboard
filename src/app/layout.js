@@ -1,15 +1,28 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fira_Sans, Fira_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "./theme";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Fira Sans is the open-source humanist sans commissioned by Mozilla and drawn
+// by Erik Spiekermann's studio (Edenspiekermann, with Carrois). Fira Mono is its
+// companion for figures and code. Using the family as a system — one voice,
+// restrained weights, tabular figures — follows Spiekermann's typographic
+// approach rather than mixing display faces.
+const firaSans = Fira_Sans({
+  variable: "--font-fira-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  style: ["normal"],
+  display: "swap",
+  adjustFontFallback: true,
+  fallback: ["system-ui", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const firaMono = Fira_Mono({
+  variable: "--font-fira-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "700"],
+  display: "swap",
+  fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
 });
 
 export const metadata = {
@@ -26,10 +39,9 @@ export default function RootLayout({ children }) {
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${firaSans.variable} ${firaMono.variable}`}>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );
 }
-

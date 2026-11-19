@@ -9,7 +9,10 @@ cd "$ROOT"
 echo "==> node:20-alpine build (same-origin API)"
 docker volume create odisha_node_modules >/dev/null
 docker volume create odisha_npm_cache >/dev/null
-rm -rf out
+# out/ is produced by a root container; remove it from a container too.
+if [ -e out ]; then
+  docker run --rm -v "$ROOT:/src" alpine:3.20 rm -rf /src/out
+fi
 docker run --rm \
   -v "$ROOT:/src" \
   -v odisha_node_modules:/src/node_modules \
