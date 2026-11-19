@@ -6,7 +6,7 @@ import { BASE_PATH } from './config';
 import { useTheme } from './theme';
 
 const LINKS = [
-  { href: '/', label: 'Home' },
+  { href: '/', label: 'Map' },
   { href: '/live', label: 'Live NRT' },
   { href: '/reliability', label: 'Reliability' },
 ];
@@ -94,8 +94,7 @@ const Navigation = () => {
         <span className="nav-brand-mark" aria-hidden="true">
           <BoltIcon />
         </span>
-        <span className="nav-brand-label">Odisha Power Outage</span>
-        <span className="nav-tagline">Live grid intelligence</span>
+        <span className="nav-brand-label">Odisha<span className="nav-brand-suffix"> Power Outage</span></span>
       </div>
 
       <div className="nav-links">

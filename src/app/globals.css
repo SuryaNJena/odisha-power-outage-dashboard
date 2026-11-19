@@ -416,17 +416,18 @@ table.data-table {
 
 /* ---------- Date-time dial ---------- */
 
-.landing { --landing-map-height: clamp(245px, calc(100svh - 290px), 640px); }
+.landing { --landing-map-height: clamp(245px, calc(100svh - 222px), 640px); }
 .landing .top-nav { height: 44px; }
-.landing-body { max-width: 1360px; margin: auto; padding: 54px clamp(8px, 1.6vw, 20px) 40px; }
-.landing-head, .landing-stats, .landing-stat, .landing-filters { display: flex; align-items: center; }
-.landing-head, .landing-filters { flex-wrap: wrap; gap: 6px 12px; margin-bottom: 6px; }
-.landing-head h1 { font-size: clamp(18px, 2vw, 24px); line-height: 1.12; }
-.landing-stats { margin-left: auto; gap: 12px; }
-.landing-stat { gap: 6px; border-left: 1px solid var(--border); padding-left: 10px; }
-.landing-stat .stat-label { margin: 0; }
-.landing-filters { padding: 4px 8px; }
-.landing-filters .btn { padding: 4px 10px; min-height: 28px; }
+.landing-body { max-width: 1360px; margin: auto; padding: 50px clamp(8px, 1.6vw, 20px) 40px; }
+.map-panel { padding: 0 6px 6px; }
+.map-frame { position: relative; }
+.map-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 0 16px; padding: 4px 6px; }
+.map-summary { font-size: 14px; color: var(--text-muted); }
+.map-summary strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.map-layers { display: flex; gap: 12px; border-left: 1px solid var(--border); padding-left: 16px; }
+.map-layers label { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; cursor: pointer; font-size: 13px; }
+.map-layers input { accent-color: var(--accent); }
+.map-updated { margin-left: auto; color: var(--text-muted); font-size: 12px; }
 .dtk { position: relative; margin-top: 5px; padding: 4px 8px 7px; user-select: none; }
 .dtk-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 4px; margin-bottom: 4px; }
 .dtk-actions { display: flex; gap: 3px; }
@@ -449,14 +450,29 @@ table.data-table {
 }
 .dtk-drum:active { cursor: grabbing; }
 .dtk-drum text { fill: var(--text); font-size: 11px; }
-.dtk-help { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.visually-hidden, .dtk-help { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 @media (max-width: 680px) {
-  .landing { --landing-map-height: clamp(220px, calc(100svh - 355px), 560px); }
-  .landing-stats { margin-left: 0; }
-  .landing-filters { gap: 4px 8px; }
+  .landing { --landing-map-height: clamp(220px, calc(100svh - 276px), 560px); }
+  .map-toolbar { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding-top: 6px; }
+  .map-summary { grid-column: 1; grid-row: 1; }
+  .map-updated { grid-column: 1; grid-row: 2; margin: 0; font-size: 11px; }
+  .map-layers { grid-column: 2; grid-row: 1 / span 2; padding: 0; border: 0; gap: 9px; }
+  .map-layers label { min-height: 34px; }
   .dtk-bar { grid-template-columns: 1fr auto; }
   .dtk-readout { grid-column: 1 / -1; grid-row: 2; }
   .dtk-actions:last-child { grid-column: 2; grid-row: 1; }
+}
+
+@media (max-width: 420px) {
+  .map-layers { flex-direction: column; gap: 0; }
+  .map-layers label { min-height: 26px; }
+  .landing .nav-link { padding-inline: 6px; }
+  .landing .nav-brand { gap: 4px; }
+}
+
+@media (max-width: 360px) {
+  .landing .top-nav { padding-inline: 4px; gap: 2px; }
+  .landing .nav-links { padding-inline: 0; }
 }
 
 /* ---------- Modal ---------- */
@@ -569,17 +585,6 @@ a {
   font-size: 12.5px;
   letter-spacing: 0.085em;
   text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.nav-tagline {
-  color: var(--text-muted);
-  font-size: 10.5px;
-  font-weight: 500;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  border-left: 1px solid var(--border);
-  padding-left: 10px;
   white-space: nowrap;
 }
 
@@ -1164,10 +1169,6 @@ a {
     padding: 0 10px;
   }
 
-  .nav-tagline {
-    display: none;
-  }
-
   .nav-links {
     justify-content: flex-start;
   }
@@ -1179,9 +1180,8 @@ a {
 }
 
 @media (max-width: 640px) {
-  /* Keep the bar breathable: the bolt mark carries the brand, links get the
-     remaining width and scroll horizontally when needed. */
-  .nav-brand-label {
+  /* Keep the location visible alongside the navigation on phones. */
+  .nav-brand-suffix {
     display: none;
   }
 

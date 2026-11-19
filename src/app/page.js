@@ -48,31 +48,10 @@ function inSelection(dot, sel) {
   return true;
 }
 
-function formatSelection(sel) {
-  const d = new Date(sel.start);
-  const date = d.toLocaleDateString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    year: d.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
-  });
-  const time = `${String(d.getHours()).padStart(2, '0')}:00`;
-  if (sel.end > sel.start) {
-    const e = new Date(sel.end);
-    const edate = e.toLocaleDateString(undefined, {
-      day: 'numeric',
-      month: 'short',
-      year: e.getFullYear() === new Date().getFullYear() ? undefined : 'numeric',
-    });
-    const etime = `${String(e.getHours()).padStart(2, '0')}:00`;
-    return `${date} ${time} – ${edate} ${etime}`;
-  }
-  return `${date} ${time}`;
-}
-
 const OdishaMap = dynamic(() => import('./components/OdishaMap'), {
   ssr: false,
   loading: () => (
-    <div className="card" style={{ padding: 8 }}>
+    <div className="map-frame">
       <div
         style={{
           height: 'var(--landing-map-height)',
@@ -219,32 +198,6 @@ export default function HomePage() {
       <Navigation />
 
       <div className="landing-body">
-        {/* Header */}
-        <div className="landing-head">
-          <div>
-            <h1>
-              Odisha Live Power Outage Dashboard
-            </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 4 }}>
-              Planned &amp; ongoing outages by district • Data refreshed {loading ? '…' : lastUpdated}
-            </p>
-          </div>
-          <div className="landing-stats">
-            <div className="landing-stat">
-              <div className="stat-value" style={{ fontSize: 20, color: 'var(--accent)' }}>
-                {loading ? '…' : visibleDots.length}
-              </div>
-              <div className="stat-label">Outages (selection)</div>
-            </div>
-            <div className="landing-stat">
-              <div className="stat-value" style={{ fontSize: 20 }}>
-                {loading ? '…' : districtCounts.length}
-              </div>
-              <div className="stat-label">Districts</div>
-            </div>
-          </div>
-        </div>
-
         {error && (
           <div
             className="card"
@@ -260,34 +213,21 @@ export default function HomePage() {
           </div>
         )}
 
-        {/* Map controls */}
-        <div className="card landing-filters">
-          <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            View
-          </span>
-          <button
-            className={showDots ? 'btn btn-accent' : 'btn'}
-            onClick={() => setShowDots((v) => !v)}
-            aria-pressed={showDots}
-            title="Overlay outage dots"
-          >
-            Dots {showDots ? 'on' : 'off'}
-          </button>
-          <button
-            className={showHeatmap ? 'btn btn-accent' : 'btn'}
-            onClick={() => setShowHeatmap((v) => !v)}
-            aria-pressed={showHeatmap}
-            title="Toggle the district heat map layer"
-          >
-            Heatmap {showHeatmap ? 'on' : 'off'}
-          </button>
-          <span style={{ color: 'var(--text-muted)', fontSize: 12, marginLeft: 'auto' }}>
-            {loading ? '…' : `${visibleDots.length} outages • ${formatSelection(effectiveSelection)}`}
-          </span>
-        </div>
-
-        {/* Leaflet map: OSM base + translucent district heat + static dots on top */}
-        <OdishaMap dots={visibleDots} districts={districtCounts} showDots={showDots} showHeatmap={showHeatmap} />
+        <section className="card map-panel" aria-labelledby="map-heading">
+          <h1 id="map-heading" className="visually-hidden">Odisha outage map</h1>
+          <div className="map-toolbar">
+            <p className="map-summary">
+              <strong>{loading ? '…' : visibleDots.length}</strong> {visibleDots.length === 1 ? 'outage' : 'outages'} in{' '}
+              <strong>{loading ? '…' : districtCounts.length}</strong> {districtCounts.length === 1 ? 'district' : 'districts'}
+            </p>
+            <div className="map-layers" role="group" aria-label="Map layers">
+              <label><input type="checkbox" checked={showDots} onChange={e => setShowDots(e.target.checked)} />Locations</label>
+              <label><input type="checkbox" checked={showHeatmap} onChange={e => setShowHeatmap(e.target.checked)} />District heat</label>
+            </div>
+            <span className="map-updated">Updated {loading ? '…' : lastUpdated}</span>
+          </div>
+          <OdishaMap dots={visibleDots} districts={districtCounts} showDots={showDots} showHeatmap={showHeatmap} />
+        </section>
 
         {/* Date-time dial: exact hourly selection, adaptive tick density, zoomable */}
         {!loading && Number.isFinite(timeRange.min) && (

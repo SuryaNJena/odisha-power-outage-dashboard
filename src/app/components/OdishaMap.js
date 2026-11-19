@@ -336,7 +336,7 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
   }, [ready, dots, dark, showDots]);
 
   return (
-    <div className="card" style={{ padding: 8, position: 'relative' }}>
+    <div className="map-frame">
       <div
         ref={wrapRef}
         style={{
