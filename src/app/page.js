@@ -218,7 +218,7 @@ export default function HomePage() {
     <main style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <Navigation />
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '88px 20px 48px' }}>
+      <div style={{ maxWidth: 1360, margin: '0 auto', padding: '88px 20px 48px' }}>
         {/* Header */}
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 10, marginBottom: 20 }}>
           <div>

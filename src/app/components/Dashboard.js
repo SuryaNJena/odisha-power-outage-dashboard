@@ -8,6 +8,51 @@ function formatReason(reason) {
   return reason.length > 60 ? reason.slice(0, 58) + '…' : reason;
 }
 
+const MONTH_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/**
+ * Split the feed's two date formats into a compact date and a time so the
+ * Start/Restore columns can stack them instead of forcing a ~150px nowrap cell
+ * that pushed the table past the card edge.
+ *
+ * Accepted: "19-NOV-2026 10:00" and "19-11-2026 15:30".
+ */
+function parseFeedParts(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  let match = raw.match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})\s+(\d{1,2}:\d{2})/);
+  if (match) {
+    const month = MONTH_NAMES.findIndex(
+      (name) => name.toUpperCase() === match[2].toUpperCase()
+    );
+    if (month >= 0) {
+      return { date: `${Number(match[1])} ${MONTH_NAMES[month]} ${match[3]}`, time: match[4] };
+    }
+  }
+  match = raw.match(/^(\d{1,2})-(\d{1,2})-(\d{4})\s+(\d{1,2}:\d{2})/);
+  if (match) {
+    const month = Number(match[2]) - 1;
+    if (month >= 0 && month < 12) {
+      return { date: `${Number(match[1])} ${MONTH_NAMES[month]} ${match[3]}`, time: match[4] };
+    }
+  }
+  return null;
+}
+
+function FeedTime({ value }) {
+  const parts = parseFeedParts(value);
+  if (!parts) return <span>{value || '—'}</span>;
+  return (
+    <span className="dt" title={value}>
+      <span className="dt-date">{parts.date}</span>
+      <span className="dt-time">{parts.time}</span>
+    </span>
+  );
+}
+
 function splitAreas(areas) {
   if (!areas) return [];
   return areas
@@ -179,32 +224,48 @@ export default function Dashboard({ dots = [] }) {
       {/* Table */}
       <div className="card" style={{ padding: 6 }}>
         <div className="table-wrap">
-          <table className="data-table">
+          <table className="data-table outage-table">
+            <colgroup>
+              <col style={{ width: '9%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '23%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '10.5%' }} />
+              <col style={{ width: '10.5%' }} />
+              <col style={{ width: '9%' }} />
+            </colgroup>
             <thead>
               <tr>
-                <th>District</th>
-                <th>Substation</th>
-                <th>Feeder</th>
-                <th>Key areas affected</th>
-                <th>Reason</th>
-                <th>Start</th>
-                <th>Restore</th>
-                <th></th>
+                <th scope="col">District</th>
+                <th scope="col">Substation</th>
+                <th scope="col">Feeder</th>
+                <th scope="col">Key areas affected</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Start</th>
+                <th scope="col">Restore</th>
+                <th scope="col" aria-label="Actions"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.slice(0, 200).map((d, i) => (
                 <tr key={`${d.district}-${d.gss}-${d.feeder}-${i}`}>
-                  <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{d.district}</td>
+                  <td className="district-cell" style={{ fontWeight: 600 }}>{d.district}</td>
                   <td>{d.gss || '—'}</td>
                   <td>{d.feeder || '—'}</td>
                   <td><AreasCell areas={d.areas} /></td>
                   <td title={d.reason}>{formatReason(d.reason)}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{d.start || '—'}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{d.end || '—'}</td>
-                  <td>
-                    <button className="btn" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => { setSeverity(3); setReporting(d); }}>
-                      ⚠ Report
+                  <td className="dt-cell"><FeedTime value={d.start} /></td>
+                  <td className="dt-cell"><FeedTime value={d.end} /></td>
+                  <td className="action-cell">
+                    <button
+                      className="btn btn-compact"
+                      type="button"
+                      title="Report incorrect data"
+                      aria-label={`Report incorrect data for ${d.district}`}
+                      onClick={() => { setSeverity(3); setReporting(d); }}
+                    >
+                      Report
                     </button>
                   </td>
                 </tr>
