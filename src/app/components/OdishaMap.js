@@ -343,7 +343,7 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
           position: 'relative',
           zIndex: 0,
           width: '100%',
-          height: 'clamp(420px, 60vh, 640px)',
+          height: 'var(--landing-map-height)',
           overflow: 'hidden',
           borderRadius: 'var(--radius-sm)',
           background: 'var(--map-bg)',

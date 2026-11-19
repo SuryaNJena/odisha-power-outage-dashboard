@@ -75,7 +75,7 @@ const OdishaMap = dynamic(() => import('./components/OdishaMap'), {
     <div className="card" style={{ padding: 8 }}>
       <div
         style={{
-          height: 'clamp(420px, 60vh, 640px)',
+          height: 'var(--landing-map-height)',
           display: 'grid',
           placeItems: 'center',
           color: 'var(--text-muted)',
@@ -215,28 +215,28 @@ export default function HomePage() {
   }, [data.updatedAt]);
 
   return (
-    <main style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <main className="landing" style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <Navigation />
 
-      <div style={{ maxWidth: 1360, margin: '0 auto', padding: '88px 20px 48px' }}>
+      <div className="landing-body">
         {/* Header */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 10, marginBottom: 20 }}>
+        <div className="landing-head">
           <div>
-            <h1 style={{ fontSize: 26, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--text)' }}>
-              ⚡ Odisha Live Power Outage Dashboard
+            <h1>
+              Odisha Live Power Outage Dashboard
             </h1>
             <p style={{ color: 'var(--text-muted)', fontSize: 14, marginTop: 4 }}>
               Planned &amp; ongoing outages by district • Data refreshed {loading ? '…' : lastUpdated}
             </p>
           </div>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
-            <div className="card" style={{ padding: '10px 18px', textAlign: 'center' }}>
+          <div className="landing-stats">
+            <div className="landing-stat">
               <div className="stat-value" style={{ fontSize: 20, color: 'var(--accent)' }}>
                 {loading ? '…' : visibleDots.length}
               </div>
               <div className="stat-label">Outages (selection)</div>
             </div>
-            <div className="card" style={{ padding: '10px 18px', textAlign: 'center' }}>
+            <div className="landing-stat">
               <div className="stat-value" style={{ fontSize: 20 }}>
                 {loading ? '…' : districtCounts.length}
               </div>
@@ -256,28 +256,30 @@ export default function HomePage() {
               fontSize: 14,
             }}
           >
-            ⚠️ {error}
+            {error}
           </div>
         )}
 
         {/* Map controls */}
-        <div className="card" style={{ padding: 12, marginBottom: 14, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="card landing-filters">
           <span style={{ color: 'var(--text-muted)', fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             View
           </span>
           <button
             className={showDots ? 'btn btn-accent' : 'btn'}
             onClick={() => setShowDots((v) => !v)}
+            aria-pressed={showDots}
             title="Overlay outage dots"
           >
-            ⚡ Dots {showDots ? 'on' : 'off'}
+            Dots {showDots ? 'on' : 'off'}
           </button>
           <button
             className={showHeatmap ? 'btn btn-accent' : 'btn'}
             onClick={() => setShowHeatmap((v) => !v)}
+            aria-pressed={showHeatmap}
             title="Toggle the district heat map layer"
           >
-            🌡 Heatmap {showHeatmap ? 'on' : 'off'}
+            Heatmap {showHeatmap ? 'on' : 'off'}
           </button>
           <span style={{ color: 'var(--text-muted)', fontSize: 12, marginLeft: 'auto' }}>
             {loading ? '…' : `${visibleDots.length} outages • ${formatSelection(effectiveSelection)}`}
@@ -289,17 +291,12 @@ export default function HomePage() {
 
         {/* Date-time dial: exact hourly selection, adaptive tick density, zoomable */}
         {!loading && Number.isFinite(timeRange.min) && (
-          <div className="card" style={{ maxWidth: 700, margin: '6px auto 0', padding: '4px 12px 6px' }}>
-            <div className="stat-label" style={{ textAlign: 'center', marginBottom: 0 }}>
-              Select date &amp; time (point or 24 h window)
-            </div>
-            <DateTimeKnob
+          <DateTimeKnob
               minMs={timeRange.min}
               maxMs={timeRange.max}
               selection={effectiveSelection}
               onChange={setSelection}
-            />
-          </div>
+          />
         )}
 
         {/* Dashboard with filters + report */}
