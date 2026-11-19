@@ -1,0 +1,126 @@
+version: 2
+
+# Source tables are created by platform/postgres/init/02_raw.sql and written by
+# Airflow loaders / Spark / Flink. dbt only reads them.
+#
+# Ownership / write cadence:
+#   raw.scrape_batches, raw.official_outages  Airflow odisha_official_ingest (every 30 min)
+#   raw.user_reports                          Go API /api/report (continuous)
+#   raw.weather_hourly                        Airflow odisha_weather_ingest (hourly)
+#   raw.district_aliases, raw.circle_exact,
+#   raw.district_centroids, raw.station_geocodes
+#                                             Airflow odisha_bootstrap (reference data)
+#   realtime.*                                Spark Structured Streaming + Flink JDBC sinks
+#   ml.*                                      Spark daily batch
+
+sources:
+  - name: raw
+    description: Landing zone written by Airflow loaders (append-only batch history).
+    schema: raw
+    tables:
+      - name: scrape_batches
+        description: One row per scrape batch; status running | success | failed.
+        columns:
+          - name: batch_id
+            description: ISO8601 UTC batch id, e.g. 2026-11-19T12:30:00Z.
+            tests:
+              - not_null
+              - unique
+          - name: started_at
+            tests:
+              - not_null
+          - name: status
+            description: Batch lifecycle status; dbt only consumes status = 'success'.
+      - name: official_outages
+        description: Raw scraped outage rows, one row per (batch, row_hash).
+        columns:
+          - name: batch_id
+            tests:
+              - not_null
+          - name: row_hash
+            description: Content hash, stable across batches for the same logical outage.
+            tests:
+              - not_null
+          - name: schema_type
+            description: "'circle' (planned outage notification) or 'division' (emergency shutdown)."
+            tests:
+              - not_null
+      - name: district_aliases
+        description: Normalized alias -> canonical district (lower alnum aliases).
+        columns:
+          - name: alias
+            tests:
+              - not_null
+              - unique
+          - name: district
+            tests:
+              - not_null
+      - name: circle_exact
+        description: Upper-case exact circle -> canonical district fallback.
+        columns:
+          - name: circle
+            tests:
+              - not_null
+              - unique
+          - name: district
+            tests:
+              - not_null
+      - name: district_centroids
+        description: District centroid fallback coordinates for map dots.
+        columns:
+          - name: district
+            tests:
+              - not_null
+              - unique
+      - name: station_geocodes
+        description: Geocoded stations (normalized station name, district) -> lat/lon.
+        columns:
+          - name: station_norm
+            tests:
+              - not_null
+          - name: district
+            tests:
+              - not_null
+      - name: user_reports
+        description: User-submitted outage reports (Go API writes; never truncated by dbt).
+        columns:
+          - name: report_id
+            tests:
+              - not_null
+              - unique
+          - name: reported_at
+            tests:
+              - not_null
+      - name: weather_hourly
+        description: Hourly Open-Meteo observations/forecasts per canonical district.
+        columns:
+          - name: district
+            tests:
+              - not_null
+          - name: observed_at
+            tests:
+              - not_null
+
+  - name: realtime
+    description: Near-real-time sinks written by Spark Structured Streaming / Flink.
+    schema: realtime
+    tables:
+      - name: district_live_metrics
+        description: Latest 15-minute per-district metrics (Spark streaming).
+      - name: report_minute
+        description: Per-minute report counts per district (Spark streaming).
+      - name: alerts
+        description: Flink alert stream sink (report_spike | high_severity | official_outage).
+      - name: flink_report_windows
+        description: Flink 10-minute tumbling report windows per district.
+
+  - name: ml
+    description: Batch ML outputs written by Spark (daily_batch.py).
+    schema: ml
+    tables:
+      - name: outage_clusters
+        description: Spatial outage clusters (daily Spark batch).
+      - name: etr_model_metrics
+        description: ETR model evaluation metrics per model_date.
+      - name: district_risk_forecast
+        description: Spark risk forecast for the /api/risk endpoint.

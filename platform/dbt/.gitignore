@@ -1,0 +1,9 @@
+# Local dbt artifacts — the Airflow runs write to the shared volume via
+# --target-path/--log-path, but local invocations drop them here.
+target/
+logs/
+dbt_packages/
+.user.yml
+
+# Local-only static validation scratch space (never part of the deliverable).
+.validate/

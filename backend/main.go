@@ -1,327 +1,192 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
+	"errors"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
+	"os/signal"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 )
 
-type DistrictData struct {
-	Name  string `json:"name"`
-	Value int    `json:"value"`
-}
+const appVersion = "2.0.0-platform"
 
-type Dot struct {
-	District string  `json:"district"`
-	Circle   string  `json:"circle"`
-	Division string  `json:"division"`
-	GSS      string  `json:"gss"`
-	Voltage  string  `json:"voltage"`
-	Feeder   string  `json:"feeder"`
-	Start    string  `json:"start"`
-	End      string  `json:"end"`
-	Date     string  `json:"date"`
-	Reason   string  `json:"reason"`
-	Areas    string  `json:"areas"`
-	Lat      float64 `json:"lat"`
-	Lon      float64 `json:"lon"`
-	Geocoded bool    `json:"geocoded"`
-}
-
-type MapResponse struct {
-	Districts []DistrictData `json:"districts"`
-	Dots      []Dot          `json:"dots"`
-	Total     int            `json:"total"`
-	UpdatedAt string         `json:"updatedAt"`
-	Source    string         `json:"source"`
-}
-
-type Report struct {
-	District   string `json:"district"`
-	GSS        string `json:"gss"`
-	Feeder     string `json:"feeder"`
-	Comment    string `json:"comment"`
-	ReportedAt string `json:"reportedAt"`
+type Config struct {
+	Port          string
+	DatabaseURL   string
+	KafkaBroker   string
+	KafkaTopic    string
+	DataDir       string
+	WebDir        string
+	AirflowURL    string
+	AirflowUser   string
+	AirflowPass   string
+	FlinkURL      string
+	SnapshotPaths []string
 }
 
 type AppState struct {
-	mu              sync.RWMutex
-	mart            *MapResponse
-	root            string
-	martPath        string
-	reportPath      string
-	pipelineRunning bool
-	lastError       string
+	cfg      Config
+	started  time.Time
+	store    *Store
+	producer *Producer
+
+	dbMu      sync.Mutex
+	lastDBTry time.Time
+
+	cacheMu sync.Mutex
+	cache   map[string]cacheItem
 }
 
-func resolveRoot() string {
-	if _, err := os.Stat(filepath.Join(".", "data")); err == nil {
-		return "."
+func env(key, fallback string) string {
+	if v := strings.TrimSpace(os.Getenv(key)); v != "" {
+		return v
 	}
-	return ".."
+	return fallback
 }
 
-func loadMart(path string) (*MapResponse, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+func loadConfig() Config {
+	cfg := Config{
+		Port:        env("PORT", "3001"),
+		DatabaseURL: env("DATABASE_URL", ""),
+		KafkaBroker: env("KAFKA_BROKERS", env("KAFKA_BOOTSTRAP", "kafka:9092")),
+		KafkaTopic:  env("KAFKA_TOPIC_REPORTS", "user-reports"),
+		DataDir:     env("DATA_DIR", "/opt/odisha-data"),
+		WebDir:      env("WEB_DIR", "/app/out"),
+		AirflowURL:  strings.TrimRight(env("AIRFLOW_URL", ""), "/"),
+		AirflowUser: env("AIRFLOW_USER", ""),
+		AirflowPass: env("AIRFLOW_PASSWORD", ""),
+		FlinkURL:    strings.TrimRight(env("FLINK_URL", "http://flink-jobmanager:8081"), "/"),
 	}
-	var m MapResponse
-	if err := json.Unmarshal(data, &m); err != nil {
-		return nil, err
+	if cfg.DatabaseURL == "" {
+		log.Printf("WARNING: DATABASE_URL is empty — serving only the snapshot")
 	}
-	return &m, nil
-}
-
-func (s *AppState) getData() *MapResponse {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.mart == nil {
-		return &MapResponse{Districts: []DistrictData{}, Dots: []Dot{}, Total: 0, UpdatedAt: "", Source: "empty"}
-	}
-	return s.mart
-}
-
-// runPipeline executes scrap.py then process.py from the repo root.
-func (s *AppState) runPipeline() error {
-	for _, script := range []string{"scrap.py", "process.py"} {
-		cmd := exec.Command("python", script)
-		cmd.Dir = s.root
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("pipeline step %s failed: %w\n%s", script, err, string(out))
-		}
-		log.Printf("pipeline %s ok: %s", script, lastLines(string(out), 3))
-	}
-	return nil
-}
-
-func lastLines(s string, n int) string {
-	lines := []string{}
-	start := len(s)
-	for i := len(s) - 1; i >= 0 && len(lines) < n; i-- {
-		if s[i] == '\n' {
-			lines = append([]string{s[i+1 : start]}, lines...)
-			start = i
-		}
-	}
-	if len(lines) < n && start > 0 {
-		lines = append([]string{s[:start]}, lines...)
-	}
-	out := ""
-	for i, l := range lines {
-		if i > 0 {
-			out += " | "
-		}
-		out += l
-	}
-	return out
-}
-
-// refreshSync runs the pipeline and reloads the mart. Caller must NOT hold the lock.
-func (s *AppState) refreshSync() error {
-	s.mu.Lock()
-	if s.pipelineRunning {
-		s.mu.Unlock()
-		return nil
-	}
-	s.pipelineRunning = true
-	s.mu.Unlock()
-
-	err := s.runPipeline()
-	if err != nil {
-		s.mu.Lock()
-		s.lastError = err.Error()
-		s.pipelineRunning = false
-		s.mu.Unlock()
-		return err
-	}
-
-	mart, err := loadMart(s.martPath)
-	if err != nil {
-		s.mu.Lock()
-		s.lastError = err.Error()
-		s.pipelineRunning = false
-		s.mu.Unlock()
-		return err
-	}
-
-	s.mu.Lock()
-	s.mart = mart
-	s.lastError = ""
-	s.pipelineRunning = false
-	s.mu.Unlock()
-	return nil
-}
-
-// refreshAsync triggers the pipeline in a background goroutine if not already running.
-func (s *AppState) refreshAsync() {
-	s.mu.RLock()
-	running := s.pipelineRunning
-	s.mu.RUnlock()
-	if running {
-		return
-	}
-	go func() {
-		if err := s.refreshSync(); err != nil {
-			log.Printf("background refresh error: %v", err)
-		}
-	}()
-}
-
-func (s *AppState) isStale() bool {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	if s.mart == nil || s.mart.UpdatedAt == "" {
-		return true
-	}
-	t, err := time.Parse(time.RFC3339Nano, s.mart.UpdatedAt)
-	if err != nil {
-		return true
-	}
-	return time.Since(t) > time.Hour
-}
-
-func (s *AppState) addReport(r Report) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	var reports []Report
-	if data, err := os.ReadFile(s.reportPath); err == nil {
-		_ = json.Unmarshal(data, &reports)
-	}
-	reports = append(reports, r)
-	os.MkdirAll(filepath.Dir(s.reportPath), 0o755)
-	out, _ := json.MarshalIndent(reports, "", "  ")
-	return os.WriteFile(s.reportPath, out, 0o644)
-}
-
-func corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
+	seen := map[string]bool{}
+	add := func(p string) {
+		if p == "" || seen[p] {
 			return
 		}
-		next(w, r)
+		seen[p] = true
+		cfg.SnapshotPaths = append(cfg.SnapshotPaths, p)
+	}
+	add(filepath.Join(cfg.DataDir, "mart", "outages.json"))
+	add("/app/data/mart/outages.json")
+	add(filepath.Join("..", "data", "mart", "outages.json"))
+	add(filepath.Join("data", "mart", "outages.json"))
+	return cfg
+}
+
+// staticHandler serves the Next.js static export, including pretty URLs such
+// as /live -> live.html, which is how the app router export is laid out.
+func (s *AppState) staticHandler() http.HandlerFunc {
+	fs := http.FileServer(http.Dir(s.cfg.WebDir))
+	return func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api") {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+			return
+		}
+		p := path.Clean("/" + r.URL.Path)
+		if strings.Contains(p, "..") {
+			http.NotFound(w, r)
+			return
+		}
+		if p == "/" {
+			p = "/index.html"
+		}
+		full := filepath.Join(s.cfg.WebDir, filepath.FromSlash(p))
+		if fi, err := os.Stat(full); err == nil && !fi.IsDir() {
+			fs.ServeHTTP(w, r)
+			return
+		}
+		if !strings.HasSuffix(p, ".html") {
+			if fi, err := os.Stat(full + ".html"); err == nil && !fi.IsDir() {
+				http.ServeFile(w, r, full+".html")
+				return
+			}
+		}
+		if fi, err := os.Stat(full); err == nil && fi.IsDir() {
+			index := filepath.Join(full, "index.html")
+			if _, err := os.Stat(index); err == nil {
+				http.ServeFile(w, r, index)
+				return
+			}
+		}
+		if _, err := os.Stat(filepath.Join(s.cfg.WebDir, "404.html")); err == nil {
+			w.WriteHeader(http.StatusNotFound)
+			http.ServeFile(w, r, filepath.Join(s.cfg.WebDir, "404.html"))
+			return
+		}
+		http.NotFound(w, r)
 	}
 }
 
 func main() {
-	root := resolveRoot()
+	log.SetFlags(log.LstdFlags | log.LUTC)
+	cfg := loadConfig()
+
 	state := &AppState{
-		root:       root,
-		martPath:   filepath.Join(root, "data", "mart", "outages.json"),
-		reportPath: filepath.Join(root, "data", "reports.json"),
+		cfg:     cfg,
+		started: time.Now(),
+		cache:   map[string]cacheItem{},
 	}
 
-	// Load the latest datamart; if missing, build it once.
-	mart, err := loadMart(state.martPath)
-	if err != nil {
-		log.Printf("mart not found (%v) — running initial pipeline", err)
-		if err := state.refreshSync(); err != nil {
-			log.Printf("initial pipeline failed: %v", err)
-		}
+	// The database may still be initialising; retry lazily from handlers.
+	if st, err := OpenStore(cfg.DatabaseURL); err == nil {
+		state.store = st
+		log.Printf("postgres connected")
 	} else {
-		state.mu.Lock()
-		state.mart = mart
-		state.mu.Unlock()
+		log.Printf("postgres unavailable at startup: %v", err)
+	}
+	state.producer = NewProducer(cfg.KafkaBroker, cfg.KafkaTopic)
+	if state.producer != nil {
+		log.Printf("kafka producer enabled: %s topic=%s", cfg.KafkaBroker, cfg.KafkaTopic)
+	}
+	defer state.producer.Close()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/mapdata", state.cors(state.handleMapData))
+	mux.HandleFunc("/api/realtime", state.cors(state.handleRealtime))
+	mux.HandleFunc("/api/reliability", state.cors(state.handleReliability))
+	mux.HandleFunc("/api/risk", state.cors(state.handleRisk))
+	mux.HandleFunc("/api/report", state.cors(state.handleReport))
+	mux.HandleFunc("/api/refresh", state.cors(state.handleRefresh))
+	mux.HandleFunc("/api/health", state.cors(state.handleHealth))
+	mux.HandleFunc("/", state.cors(state.staticHandler()))
+
+	srv := &http.Server{
+		Addr:              ":" + cfg.Port,
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
-	// Scheduled refresh every 6 hours.
 	go func() {
-		ticker := time.NewTicker(6 * time.Hour)
-		defer ticker.Stop()
-		for range ticker.C {
-			state.refreshAsync()
+		log.Printf("listening on :%s (web=%s data=%s)", cfg.Port, cfg.WebDir, cfg.DataDir)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("server error: %v", err)
 		}
 	}()
 
-	// Freshness check loop: if mart is stale (>1h), kick a background refresh.
-	go func() {
-		ticker := time.NewTicker(15 * time.Minute)
-		defer ticker.Stop()
-		for range ticker.C {
-			if state.isStale() {
-				state.refreshAsync()
-			}
-		}
-	}()
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+	<-stop
 
-	// Serve the exported frontend (out/) on the same port so one tunnel covers
-	// both the UI and the API. Falls back to index.html for unknown routes.
-	outDir := filepath.Join(root, "out")
-	if info, err := os.Stat(outDir); err == nil && info.IsDir() {
-		fileServer := http.FileServer(http.Dir(outDir))
-		http.Handle("/", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-			if strings.HasPrefix(r.URL.Path, "/api") {
-				http.NotFound(w, r)
-				return
-			}
-			candidate := filepath.Join(outDir, filepath.Clean("/"+r.URL.Path))
-			if fi, err := os.Stat(candidate); err != nil || fi.IsDir() {
-				http.ServeFile(w, r, filepath.Join(outDir, "index.html"))
-				return
-			}
-			fileServer.ServeHTTP(w, r)
-		}))
-		log.Printf("serving frontend from %s", outDir)
-	} else {
-		log.Printf("no %s build found — serve the frontend separately (npm run dev) or run npm run build", outDir)
+	log.Printf("shutting down")
+	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+	defer cancel()
+	_ = srv.Shutdown(ctx)
+	state.dbMu.Lock()
+	if state.store != nil {
+		state.store.Close()
 	}
-
-	http.HandleFunc("/api/mapdata", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if state.isStale() {
-			state.refreshAsync()
-		}
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(state.getData())
-	}))
-
-	http.HandleFunc("/api/refresh", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost && r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		state.refreshAsync()
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusAccepted)
-		fmt.Fprintf(w, `{"status":"refreshing"}`)
-	}))
-
-	http.HandleFunc("/api/report", corsMiddleware(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-			return
-		}
-		var rep Report
-		if err := json.NewDecoder(r.Body).Decode(&rep); err != nil {
-			http.Error(w, "invalid body", http.StatusBadRequest)
-			return
-		}
-		rep.ReportedAt = time.Now().UTC().Format(time.RFC3339)
-		if err := state.addReport(rep); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
-		fmt.Fprintf(w, `{"status":"ok"}`)
-	}))
-
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "3001"
-	}
-	log.Printf("backend running on :%s (root=%s)", port, root)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	state.dbMu.Unlock()
+	log.Printf("bye")
 }

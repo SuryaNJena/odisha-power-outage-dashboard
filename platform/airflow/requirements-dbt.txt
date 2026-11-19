@@ -1,0 +1,10 @@
+# dbt CLI installed into the isolated virtualenv at /opt/dbt.
+#
+# This venv is completely separate from the Airflow environment: the DAGs invoke
+# /opt/dbt/bin/dbt as a subprocess (see odisha_common.dbt_command), so dbt's
+# dependency tree (agate/psycopg2/logbook/...) can never break Airflow.
+#
+# `~=1.9` is the contract requirement: today pip resolves it to dbt 1.11.x, which
+# still supports the classic (config-version: 2) dbt project layout used under
+# platform/dbt.  Pin `dbt-postgres~=1.9.0` here if a strict 1.9.x is required.
+dbt-postgres~=1.9

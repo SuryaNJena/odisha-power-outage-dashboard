@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: map_dots
+    description: >
+      One row per outage in the latest successful scrape batch; the API map payload.
+      start_text/end_text keep the original feed strings for frontend parsing.
+    columns:
+      - name: district
+        tests:
+          - not_null
+      - name: start_text
+        description: Original feed string, e.g. '28-AUG-2026 08:00' or '26-08-2026 09:21'.
+      - name: end_text
+        description: Original feed string (expected restoration), same formats as start_text.
+      - name: outage_date
+        description: IST date of the parsed start timestamp.
+      - name: geocoded
+        tests:
+          - not_null
+      - name: is_planned
+        tests:
+          - not_null
+      - name: cause_category
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["weather", "tree_trimming", "equipment_failure", "maintenance", "project_work", "line_work", "other"]
+      - name: duration_minutes
+        description: Guaranteed >= 0 by tests/assert_duration_non_negative.sql.
+      - name: affected_customers
+        description: Estimated customers interrupted (documented estimate).
+
+  - name: outage_cause_daily
+    description: Daily outage counts and estimated customer-interruptions by cause.
+    columns:
+      - name: metric_date
+        tests:
+          - not_null
+      - name: cause_category
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["weather", "tree_trimming", "equipment_failure", "maintenance", "project_work", "line_work", "other"]
+      - name: outage_count
+        tests:
+          - not_null
+      - name: affected_customers
+        tests:
+          - not_null

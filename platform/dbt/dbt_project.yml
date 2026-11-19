@@ -1,0 +1,66 @@
+# dbt project — Odisha power outage platform.
+#
+# Project + profiles both live in this directory (`platform/dbt`). Airflow runs:
+#   dbt --project-dir /opt/odisha/platform/dbt --profiles-dir /opt/odisha/platform/dbt ...
+# so no DBT_PROFILES_DIR is strictly required, but exporting it also works.
+#
+# Schema routing (macros/generate_schema_name.sql): the `+schema` values below are
+# used verbatim instead of dbt's default `<target.schema>_<custom_schema>`
+# concatenation, so models land in: staging, analytics, marts, seeds.
+#
+# Target compatibility: dbt-postgres 1.9 → 1.11 (classic config-version: 2).
+
+name: 'odisha'
+version: '1.0.0'
+config-version: 2
+
+profile: 'odisha'
+
+model-paths: ["models"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+  - "logs"
+
+models:
+  odisha:
+    +tags: ["odisha"]
+    staging:
+      +materialized: view
+      +schema: staging
+    analytics:
+      +materialized: table
+      +schema: analytics
+    marts:
+      +materialized: table
+      +schema: marts
+
+seeds:
+  odisha:
+    district_profile:
+      +schema: seeds
+      +column_types:
+        district: text
+        zone: text
+        customers: integer
+        population: integer
+        urban_share: numeric(5,4)
+        lat: double precision
+        lon: double precision
+
+vars:
+  # District bucket used when no alias / circle-exact match is found.
+  unknown_district: "Unknown"
+  # Published history window for fct_outage_events / reliability / cause rollups.
+  # raw.official_outages keeps the full scrape history; dbt republishes this
+  # trailing window on every run so a 30-minute schedule stays cheap as the raw
+  # table grows (~one scrape batch per 30 min). Must cover reliability_lookback_days.
+  history_lookback_days: 120
+  # Reliability/risk windows (days) — keep the API's 30-day window covered with headroom.
+  reliability_lookback_days: 90
+  risk_past_days: 30
+  risk_forecast_days: 3

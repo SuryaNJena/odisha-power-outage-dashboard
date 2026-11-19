@@ -1,143 +1,166 @@
-# Odisha Live Power Outage Dashboard
+# Odisha Live Power Outage Dashboard + Data Platform
 
-Live planned &amp; ongoing power outage map for Odisha — Next.js frontend, Go backend, Python scrape/process pipeline.
+Live planned & ongoing power outage map for Odisha, plus a near-real-time
+crowd-report pipeline and a batch analytics/ML layer.
 
-## Architecture
+- **Production:** <https://odishablackouts.356189.xyz> (Cloudflare Tunnel →
+  `127.0.0.1:3001` on the self-hosted Debian server)
+- **App:** Next.js 15 static export + Go API on a single port (`3001`)
+- **Data platform:** Airflow 2.10, dbt-postgres, PostgreSQL 16, Kafka 3.9 (KRaft),
+  Flink 1.20 (SQL), Spark 3.5 (Structured Streaming + batch ML)
+- **Operator UIs (localhost only):** Airflow `:8080`, Flink `:8081`
 
 ```
-kavach.tpodisha.com  →  scrap.py        →  scrappedData/*.csv            (landing, gitignored)
-                        process.py      →  data/odisha.db                (SQLite: raw + enriched)
-                                          data/mart/outages.json         (datamart, OSM-geocoded)
-                                          public/outage_data.json        (static snapshot for Pages)
-                        backend/main.go →  :3001  serves UI + /api/*     (single port)
-                        Next.js         →  out/  (static export, served by Go)
+                     every 30 min                            hourly
+kavach.tpodisha.com ──► Airflow odisha_official_ingest   Airflow odisha_weather_ingest ──► Open-Meteo
+                              │                                  │
+                              ▼                                  ▼
+                        raw.official_outages              raw.weather_hourly
+                              │                                  │
+                              └────────────► dbt ◄───────────────┘
+                                    staging → analytics → marts
+                                              │
+                                              ├──► Go API /api/mapdata, /api/reliability, /api/risk
+                                              └──► mart/outages.json (shared volume + static fallback)
+
+browser ──POST /api/report──► Go API ──► Kafka user-reports
+                                             │
+                       ┌─────────────────────┴─────────────────────┐
+                       ▼                                           ▼
+             Flink SQL: 10-min windows                  Spark Structured Streaming
+             spike/high-severity alerts                 1-min windows, reconciliation
+                       │                                           │
+                       ├──► Kafka outage-alerts ───────────────────┤
+                       └──► realtime.flink_report_windows           └──► realtime.district_live_metrics
+                                                                        realtime.report_minute
+                                                                        realtime.alerts
+                                                                        ops.pipeline_heartbeat
 ```
 
-### SQLite raw-data store
+## Repository layout
 
-`process.py` ingests every scraped row into `data/odisha.db` before processing:
+```
+backend/                 Go API (mapdata, realtime, reliability, risk, report, health)
+src/app/                 Next.js app: / (map), /live (NRT), /reliability (SAIDI/SAIFI)
+platform/
+  docker-compose.yml     full stack (app, postgres, kafka, flink, airflow, spark-stream)
+  CONTRACT.md            interface contract used to build the platform
+  FEATURES.md            feature map + inspiration from foreign outage services
+  postgres/init/         schemas, raw/realtime/ml DDL, reference-data seed
+  airflow/               image, DAGs, scrape/weather/dbt/publish/Kafka scripts
+  dbt/                   dbt-postgres project: staging, analytics, marts, tests, seed
+  flink/                 image with SQL connector jars, SQL job, submit/watchdog
+  spark/                 Structured Streaming sink + daily batch ML jobs
+scripts/deploy.ps1       one-command deploy from Windows
+scripts/deploy_remote.sh server-side build/stage/compose-up
+```
 
-- `raw_outages` — one row per raw outage, deduped by content hash and tagged with a
-  per-run `batch_id`, so raw history accumulates across scrapes.
-- `outages` — enriched rows (canonical district, lat/lon, `date`).
-- `meta` — bookkeeping (latest batch id).
+## Deploy
 
-The datamart is always built from the **newest batch**; if `scrappedData/` is missing,
-`process.py` falls back to the latest batch already in SQLite.
+Prereqs: SSH alias `ssh.356189.xyz` (see `~/.ssh/config`), Docker on the server,
+Go + Node/`tar` locally.
 
-### Generalized district resolution
+```powershell
+powershell -File scripts\deploy.ps1
+```
 
-`process.py` no longer trusts only the circle name. It resolves each record against
-`data/mappings/district_aliases.json` across its **division → subdivision → section →
-circle** fields (longest alias substring wins), then falls back to an exact circle map:
+The script builds the linux Go binary, packs the repo, uploads it, builds the
+Next.js export inside a `node:20-alpine` container on the server, stages the app
+image and runs `docker compose up -d --build`. First run takes 10–20 minutes
+(base images + Airflow image with Java/PySpark/dbt).
 
-- A row in the `PARADEEP` circle whose division is `KED-I, KENDRAPARA` → **Kendrapara**.
-- `ANED, ANGUL` → **Angul**, `NYED, NAYAGARH` → **Nayagarh**, `PED, PURI` → **Puri**,
-  `JED,JHARSUGUDA` → **Jharsuguda**, `DED,DEOGARH` → **Debagarh**, `SED,SONEPUR` → **Subarnapur**.
-- Spelling variants are normalized to the map's official GeoJSON names:
-  `Balasore`/`Baleswar` → **Baleshwar**, `Bolangir` → **Balangir**, `Keonjhar` → **Kendujhar**,
-  `Jagatsinghpur` → **Jagatsinghapur**, `Nabarangpur` → **Nabarangapur** (aliases pulled from
-  Wikipedia's district list + OSM + the feed itself).
-- Town aliases (e.g. `Kuakhia` → Kendrapara, `Rairangpur` → Mayurbhanj) cover divisions
-  named after towns rather than districts.
+Then bootstrap the data platform once:
 
-District names in the datamart therefore always match the GeoJSON district polygons, so the
-choropleth fills and hover tooltips line up with the outage dots.
+```bash
+ssh ssh.356189.xyz
+cd ~/odisha-platform/platform
+docker compose exec airflow airflow dags unpause odisha_bootstrap
+docker compose exec airflow airflow dags trigger odisha_bootstrap
+docker compose ps
+curl -s localhost:3001/api/health | jq
+```
 
-## Where to set ports
+`odisha_bootstrap` creates Kafka topics, loads reference data, performs the first
+scrape, runs `dbt seed/run/test`, publishes the map mart JSON and sends the first
+batch to Kafka. It is idempotent.
 
-- **Backend / single deployment port:** `backend/main.go`
-  - Read from the `PORT` environment variable, default `3001`.
-  - The Go server serves **both** the UI (from `out/`) and the API, so this is the only port you need to expose.
-- **Frontend dev server port:** `package.json` → `"dev": "next dev -p 3000"` (dev only — hot reload).
-- **Base URLs:** `src/app/config.js`
-  - `NEXT_PUBLIC_BACKEND_URL` — where the frontend calls the API. Defaults to **same-origin** (`/api/mapdata`) which is what the one-tunnel deployment uses. `.env.local` sets it to `http://localhost:3001` for local dev.
-  - `NEXT_PUBLIC_BASE_PATH` / `NEXT_PUBLIC_USE_BASE_PATH` — only for subpath hosting (e.g. GitHub Pages), not needed for a normal tunnel/domain.
+## Airflow DAGs
+
+| DAG | Schedule (IST) | Purpose |
+|---|---|---|
+| `odisha_official_ingest` | `*/30 * * * *` | scrape → raw → dbt run/test → publish mart → Kafka |
+| `odisha_weather_ingest` | `5 * * * *` | Open-Meteo hourly forecast → `raw.weather_hourly` + Kafka |
+| `odisha_dbt_daily` | `30 2 * * *` | full dbt run + tests + docs |
+| `odisha_spark_batch` | `0 3 * * *` | Spark ML batch (clusters, ETR model, risk forecast, Parquet lake) |
+| `odisha_platform_health` | `*/10 * * * *` | heartbeats, Flink job presence, stale-pipeline detection |
+| `odisha_bootstrap` | manual | first-run bootstrap |
+
+## API
+
+| Endpoint | Description |
+|---|---|
+| `GET /api/mapdata` | map dots + district heat for the latest successful batch (Postgres, snapshot fallback) |
+| `GET /api/realtime` | NRT report totals, per-district reports/unconfirmed/risk, alerts, trend, pipeline health |
+| `GET /api/reliability?days=7\|30\|90` | SAIDI / SAIFI / CAIDI / ASAI by district |
+| `GET /api/risk` | weather-driven risk forecast (Spark ML first, dbt marts fallback) |
+| `POST /api/report` | publish a crowd outage report (Kafka + `raw.user_reports`) |
+| `GET /api/health` | postgres / kafka / flink / spark component health |
+| `POST /api/refresh` | trigger the official-ingest DAG through the Airflow REST API |
+
+## Operator access (no public exposure)
+
+```bash
+ssh -N -L 8080:127.0.0.1:8080 -L 8081:127.0.0.1:8081 ssh.356189.xyz
+# Airflow: http://localhost:8080  (admin / value of AIRFLOW_ADMIN_PASSWORD, default admin)
+# Flink:   http://localhost:8081
+```
+
+The deploy script resets the Airflow admin password to `AIRFLOW_ADMIN_PASSWORD`
+(default `admin` in `platform/.env`), which is also what the Go API uses for
+`POST /api/refresh`.
+
+Kafka, Postgres and Spark are only reachable on the compose network.
+
+## Dashboard pages
+
+- `/` — outage map with dots + district heat, date/time knob, filters, report form.
+- `/live` — NRT dashboard: reports in the last 15 min, districts reporting, active
+  alerts, official outage count, pipeline status chips, per-minute trend, alert
+  feed, quick report form.
+- `/reliability` — 7/30/90-day SAIDI/SAIFI/CAIDI/ASAI per district, trend and
+  ranking (IEEE 1366 style reliability indices).
 
 ## Local development
 
 Prereqs: Node.js, Go, Python 3.11+.
 
 ```powershell
-pip install -r requirements.txt        # once
-python scrap.py                        # fetch outage tables (CSVs)
-python process.py                      # build geocoded datamart
+pip install -r requirements.txt
+python scrap.py            # fetch outage tables (CSVs)
+python process.py          # SQLite + geocoded JSON mart
+cd backend; go run .       # API + static export on :3001
+npm run dev                # Next dev server on :3000 (hot reload)
 ```
 
-Terminal 1 — backend API (port 3001):
-```powershell
-cd backend
-go run .
+The legacy pipeline (`scrap.py` → `process.py` → SQLite/JSON) is still used by the
+GitHub Pages workflow and as the offline fallback; the live self-hosted stack uses
+Airflow + dbt + Postgres instead.
+
+## Data refresh behaviour
+
+- Airflow scrapes every 30 min and dbt rebuilds the marts in the same DAG run.
+- If `data/odisha.db` / `scrappedData/` are missing, the Go server serves the
+  committed `data/mart/outages.json` snapshot (the app never shows a blank map).
+- Weather forecasts are refreshed hourly; the risk model is refreshed nightly by
+  Spark.
+
+## Useful commands
+
+```bash
+cd ~/odisha-platform/platform
+docker compose ps
+docker compose logs -f airflow
+docker compose logs -f spark-stream flink-jobmanager
+docker compose exec postgres psql -U odisha -d odisha -c "select count(*) from raw.official_outages"
+docker compose exec airflow /opt/dbt/bin/dbt --project-dir /opt/odisha/platform/dbt --profiles-dir /opt/odisha/platform/dbt test
 ```
-
-Terminal 2 — frontend dev server (port 3000, hot reload):
-```powershell
-npm run dev
-```
-The `.env.local` file points the dev frontend at `http://localhost:3001`.
-
-Open http://localhost:3000
-
-## One tunnel for everything (Cloudflare Tunnel)
-
-The Go backend serves the exported frontend + API on a single port, so one
-tunnel exposes the whole app.
-
-```powershell
-# Build the static frontend for same-origin API access
-$env:NEXT_PUBLIC_BACKEND_URL=""
-npm run build
-
-# Start the Go server (serves out/ + /api/*)
-cd backend
-go run .
-```
-
-Then point your tunnel at:
-```
-http://localhost:3001
-```
-
-Visitors get both the UI and the API from the same origin — no per-page base
-URL config needed.
-
-If you later split the API onto its own subdomain, build with:
-```powershell
-$env:NEXT_PUBLIC_BACKEND_URL="https://api.yourdomain.com"
-npm run build
-```
-
-## Data refresh
-
-- Backend refreshes on a 6-hour schedule, or automatically when data is older
-  than 1 hour (it re-runs `scrap.py` + `process.py`).
-- Force a refresh: `POST /api/refresh`.
-- Report wrong data: the dashboard's report button → `POST /api/report`
-  (stored in `data/reports.json`).
-
-## Frontend date filter
-
-A date-range control sits just above the map. It drives everything downstream:
-
-- Outage dots on the map (re-projected live without restarting the pulse animation),
-- the district choropleth heat values,
-- the header stats and the details table.
-
-Presets (`Today`, `Next 7 days`, `Next 30 days`, `All`) plus free-form From/To date
-inputs are supported. Date parsing lives in `src/app/dateUtils.js` and handles both
-feed formats (`13-AUG-2026 10:00` and `12-08-2026 21:58`); enriched dots also carry a
-precomputed `date` (`YYYY-MM-DD`) field.
-
-If no backend is reachable (e.g. the static GitHub Pages build), the frontend falls
-back to `public/outage_data.json`, which `process.py` now writes as a full snapshot
-(dots included), so the map + date filter work without a server too.
-
-## Useful scripts
-
-- `python scrap.py` — pull raw outage tables.
-- `python process.py` — ingest raw CSVs into SQLite, resolve districts (alias
-  matching), geocode (OSM Nominatim, cached), write `data/odisha.db` +
-  `data/mart/outages.json` + `public/outage_data.json`. Falls back to the latest
-  SQLite batch automatically when `scrappedData/` is empty.
-- `node scripts/compute_centroids.mjs` — regenerate district centroid fallbacks.
-

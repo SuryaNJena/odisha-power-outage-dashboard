@@ -1,0 +1,310 @@
+name: odisha
+
+# ---------------------------------------------------------------------------
+# Odisha power-outage data platform
+#
+#   app (Go)  :3001  -> Cloudflare tunnel -> https://odishablackouts.356189.xyz
+#   airflow   :8080  -> DAGs: scrape, weather, dbt, spark batch, health
+#   postgres         -> warehouse + airflow metadata
+#   kafka            -> user reports / official outages / weather / alerts
+#   flink            -> NRT report-spike detection (SQL job)
+#   spark-stream     -> NRT metrics sink into Postgres
+#
+# Copy platform/.env.example to platform/.env and set POSTGRES_PASSWORD first.
+# ---------------------------------------------------------------------------
+
+x-common-env: &common-env
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: odisha
+  POSTGRES_USER: odisha
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+  DATABASE_URL: postgresql://odisha:${POSTGRES_PASSWORD}@postgres:5432/odisha?sslmode=disable
+  KAFKA_BOOTSTRAP: kafka:9092
+  KAFKA_BROKERS: kafka:9092
+  TZ: Asia/Kolkata
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: odisha-postgres
+    environment:
+      POSTGRES_DB: odisha
+      POSTGRES_USER: odisha
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: Asia/Kolkata
+    volumes:
+      - odisha_pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odisha -d odisha"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    mem_limit: 640m
+    restart: unless-stopped
+
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: odisha-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx384m"
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      TZ: Asia/Kolkata
+    volumes:
+      - odisha_kafka:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
+    mem_limit: 900m
+    restart: unless-stopped
+
+  kafka-init:
+    image: apache/kafka:3.9.0
+    container_name: odisha-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/opt/odisha/kafka/topics.sh"]
+    environment:
+      KAFKA_BOOTSTRAP: kafka:9092
+    volumes:
+      - ./kafka:/opt/odisha/kafka:ro
+    restart: "no"
+
+  flink-jobmanager:
+    build:
+      context: ./flink
+    image: odisha-flink:1.20.1
+    container_name: odisha-flink-jm
+    command: jobmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        jobmanager.memory.process.size: 640m
+        state.checkpoints.dir: file:///opt/flink/checkpoints
+        state.savepoints.dir: file:///opt/flink/savepoints
+        execution.checkpointing.interval: 30s
+        execution.checkpointing.min-pause: 10s
+        rest.address: 0.0.0.0
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - odisha_flink_ckpt:/opt/flink/checkpoints
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8081/overview >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    mem_limit: 768m
+    restart: unless-stopped
+
+  flink-taskmanager:
+    image: odisha-flink:1.20.1
+    container_name: odisha-flink-tm
+    command: taskmanager
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 2
+        taskmanager.memory.process.size: 900m
+        taskmanager.memory.jvm-metaspace.size: 128m
+        taskmanager.memory.framework.heap.size: 64m
+        taskmanager.memory.framework.off-heap.size: 64m
+        taskmanager.memory.managed.size: 96m
+        taskmanager.memory.network.min: 32m
+        taskmanager.memory.network.max: 32m
+    volumes:
+      - odisha_flink_ckpt:/opt/flink/checkpoints
+    mem_limit: 1000m
+    restart: unless-stopped
+
+  flink-submit:
+    image: odisha-flink:1.20.1
+    container_name: odisha-flink-submit
+    depends_on:
+      flink-jobmanager:
+        condition: service_healthy
+      flink-taskmanager:
+        condition: service_started
+      kafka-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        while true; do
+          bash /opt/odisha/flink/submit.sh || true
+          sleep 180
+        done
+    environment:
+      DATABASE_URL: postgresql://odisha:${POSTGRES_PASSWORD}@postgres:5432/odisha?sslmode=disable
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      KAFKA_BOOTSTRAP: kafka:9092
+      FLINK_REST_URL: http://flink-jobmanager:8081
+      SQL_CLIENT_JAVA_OPTS: -Xmx256m
+    volumes:
+      - ./flink:/opt/odisha/flink:ro
+    mem_limit: 512m
+    restart: unless-stopped
+
+  airflow:
+    build:
+      context: ..
+      dockerfile: platform/airflow/Dockerfile
+    image: odisha-airflow:2.10.5
+    container_name: odisha-airflow
+    user: "0:0"
+    command:
+      - bash
+      - -c
+      - |
+        airflow db migrate
+        (airflow users create -u admin -p "$${AIRFLOW_ADMIN_PASSWORD}" -f Admin -l User -r Admin >/dev/null 2>&1 || true)
+        exec airflow standalone
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      <<: *common-env
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://odisha:${POSTGRES_PASSWORD}@postgres:5432/airflow
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "False"
+      AIRFLOW__CORE__PARALLELISM: "4"
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: "4"
+      AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "False"
+      AIRFLOW__WEBSERVER__WORKERS: "1"
+      AIRFLOW__WEBSERVER__WORKER_REFRESH_BATCH_SIZE: "0"
+      AIRFLOW__SCHEDULER__MIN_FILE_PROCESS_INTERVAL: "30"
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+      _AIRFLOW_WWW_USER_USERNAME: admin
+      _AIRFLOW_WWW_USER_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-admin}
+      DATA_DIR: /opt/odisha/data
+      REPO_DIR: /opt/odisha
+      FLINK_REST_URL: http://flink-jobmanager:8081
+      AIRFLOW_ADMIN_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-admin}
+      PYTHONDONTWRITEBYTECODE: "1"
+    volumes:
+      - ..:/opt/odisha
+      - ./airflow/dags:/opt/airflow/dags:ro
+      - ../data/mappings:/opt/odisha/data/mappings:ro
+      - odisha_app_data:/opt/odisha/data
+      - odisha_airflow_logs:/opt/airflow/logs
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 20
+      start_period: 90s
+    mem_limit: 2000m
+    restart: unless-stopped
+
+  spark-stream:
+    image: odisha-airflow:2.10.5
+    container_name: odisha-spark-stream
+    user: "0:0"
+    depends_on:
+      airflow:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    entrypoint: ["/bin/bash", "-c"]
+    command:
+      - |
+        SPARK_HOME=$$(python3 -c 'import pyspark,os;print(os.path.dirname(pyspark.__file__))')
+        exec "$$SPARK_HOME/bin/spark-submit" \
+          --master 'local[2]' \
+          --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.4 \
+          --jars /opt/jdbc/postgresql-42.7.4.jar \
+          --conf spark.sql.shuffle.partitions=4 \
+          --conf spark.driver.memory=512m \
+          --conf spark.executor.memory=512m \
+          --conf spark.ui.enabled=false \
+          /opt/odisha/platform/spark/jobs/stream_live_metrics.py
+    environment:
+      <<: *common-env
+      SPARK_CHECKPOINT_DIR: /opt/spark-checkpoints/stream-live
+      DATA_DIR: /opt/odisha-data
+    volumes:
+      - ..:/opt/odisha:ro
+      - odisha_spark_ckpt:/opt/spark-checkpoints
+      - odisha_spark_ivy:/root/.ivy2
+      - odisha_app_data:/opt/odisha-data
+    mem_limit: 1200m
+    stop_grace_period: 45s
+    restart: unless-stopped
+
+  app:
+    build:
+      context: ./app
+    image: odisha-app:2.0.0
+    container_name: odisha-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3001:3001"
+    environment:
+      PORT: "3001"
+      DATABASE_URL: postgresql://odisha:${POSTGRES_PASSWORD}@postgres:5432/odisha?sslmode=disable
+      KAFKA_BROKERS: kafka:9092
+      KAFKA_TOPIC_REPORTS: user-reports
+      DATA_DIR: /opt/odisha-data
+      WEB_DIR: /app/out
+      AIRFLOW_URL: http://airflow:8080
+      AIRFLOW_USER: admin
+      AIRFLOW_PASSWORD: ${AIRFLOW_ADMIN_PASSWORD:-admin}
+      FLINK_URL: http://flink-jobmanager:8081
+      TZ: Asia/Kolkata
+    volumes:
+      - odisha_app_data:/opt/odisha-data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3001/api/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    mem_limit: 192m
+    restart: unless-stopped
+
+volumes:
+  odisha_pgdata:
+  odisha_kafka:
+  odisha_flink_ckpt:
+  odisha_airflow_logs:
+  odisha_app_data:
+  odisha_spark_ckpt:
+  odisha_spark_ivy:
+
+networks:
+  default:
+    name: odisha_net

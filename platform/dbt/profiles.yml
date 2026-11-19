@@ -1,0 +1,33 @@
+# dbt connection profile — no credentials in this file.
+#
+# Every value is read from the environment. docker-compose injects the shared
+# POSTGRES_* variables (see platform/CONTRACT.md):
+#   POSTGRES_HOST=postgres  POSTGRES_PORT=5432  POSTGRES_DB=odisha
+#   POSTGRES_USER=odisha    POSTGRES_PASSWORD=<from .env>
+#
+# Usage (in Airflow image, repo mounted at /opt/odisha):
+#   dbt --project-dir /opt/odisha/platform/dbt \
+#       --profiles-dir  /opt/odisha/platform/dbt \
+#       --target-path   /opt/odisha/data/dbt/target \
+#       --log-path      /opt/odisha/data/dbt/logs \
+#       run --target dev
+#
+# The default schema is `analytics` as required by the contract; per-model
+# `+schema` configs are routed by macros/generate_schema_name.sql to the
+# exact schemas staging / analytics / marts / seeds.
+#
+# Defaults are only for local convenience (postgres:postgres); production runs
+# must set the POSTGRES_* env vars, in particular POSTGRES_PASSWORD.
+
+odisha:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'postgres') }}"
+      port: "{{ env_var('POSTGRES_PORT', '5432') | int }}"
+      user: "{{ env_var('POSTGRES_USER', 'odisha') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', '') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'odisha') }}"
+      schema: analytics
+      threads: 4

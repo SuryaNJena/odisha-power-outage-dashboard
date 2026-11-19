@@ -1,0 +1,16 @@
+# Build context is the repo root for the Airflow image: keep it small.
+.git
+.github
+.tmp
+.next
+out
+node_modules
+scrappedData
+data/odisha.db
+data/lake
+platform/app/out
+platform/app/odisha-backend
+platform/app/data
+platform/dbt/.validate
+**/__pycache__
+**/*.pyc

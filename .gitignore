@@ -54,3 +54,17 @@ next-env.d.ts
 /public/Archive
 /public/Odisha
 /web-scrapper
+
+# platform runtime / build artifacts
+/.tmp/
+/platform/.env
+/platform/app/out/
+/platform/app/odisha-backend
+/platform/app/data/
+/platform/dbt/target/
+/platform/dbt/logs/
+**/__pycache__/
+# local pip/build scratch from dependency validation
+pip-build-tracker-*
+.platform-validate/
+platform/dbt/.validate/

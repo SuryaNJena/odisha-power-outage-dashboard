@@ -1,0 +1,39 @@
+version: 2
+
+seeds:
+  - name: district_profile
+    description: >
+      Canonical 30 Odisha districts with discom zone, estimated electricity
+      customers, 2011-census population, urban share and centroid coordinates.
+      Values are estimates; the customer count is the denominator for SAIDI/SAIFI
+      and the base for per-outage affected-customer estimates.
+    columns:
+      - name: district
+        description: Canonical OSM spelling used across the platform (matches public/Odisha.json).
+        tests:
+          - not_null
+          - unique
+      - name: zone
+        description: Discom zone — central (TPCODL), north (TPNODL), south (TPSODL), west (TPWODL).
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["central", "north", "south", "west"]
+      - name: customers
+        description: Estimated electricity consumers (connections) in the district.
+        tests:
+          - not_null
+      - name: population
+        description: 2011 census population (plausible estimate).
+        tests:
+          - not_null
+      - name: urban_share
+        description: Urban population share 0..1.
+        tests:
+          - not_null
+      - name: lat
+        tests:
+          - not_null
+      - name: lon
+        tests:
+          - not_null

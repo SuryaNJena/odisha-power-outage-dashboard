@@ -1,0 +1,137 @@
+version: 2
+
+models:
+  - name: dim_district
+    description: 30 canonical Odisha districts with profile/weights used by the API.
+    columns:
+      - name: district
+        tests:
+          - not_null
+          - unique
+      - name: zone
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["central", "north", "south", "west"]
+      - name: customers
+        tests:
+          - not_null
+      - name: population
+        tests:
+          - not_null
+      - name: urban_share
+        tests:
+          - not_null
+      - name: lat
+        tests:
+          - not_null
+      - name: lon
+        tests:
+          - not_null
+
+  - name: fct_outage_events
+    description: Deduplicated outage event history (one row per row_hash) for the API.
+    columns:
+      - name: row_hash
+        tests:
+          - not_null
+          - unique
+      - name: district
+        tests:
+          - not_null
+      - name: cause_category
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["weather", "tree_trimming", "equipment_failure", "maintenance", "project_work", "line_work", "other"]
+      - name: is_planned
+        tests:
+          - not_null
+      - name: is_active
+        tests:
+          - not_null
+      - name: duration_minutes
+        description: Guaranteed >= 0 by tests/assert_duration_non_negative.sql.
+
+  - name: reliability_daily
+    description: >
+      Daily SAIDI/SAIFI/CAIDI/ASAI per district over the trailing 90 days
+      (zero-filled days included). Definitions in the model header.
+    columns:
+      - name: district
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_district')
+              field: district
+      - name: metric_date
+        tests:
+          - not_null
+      - name: saidi_minutes
+        tests:
+          - not_null
+      - name: saifi
+        tests:
+          - not_null
+      - name: caidi_minutes
+        tests:
+          - not_null
+      - name: asai_pct
+        description: Guaranteed 0..100 by tests/assert_reliability_range.sql.
+        tests:
+          - not_null
+      - name: outage_count
+        tests:
+          - not_null
+      - name: customers_affected
+        tests:
+          - not_null
+
+  - name: district_live_snapshot
+    description: Current per-district state (active outages + blended risk_score).
+    columns:
+      - name: district
+        tests:
+          - not_null
+          - unique
+      - name: active_outages
+        tests:
+          - not_null
+      - name: affected_customers
+        tests:
+          - not_null
+      - name: avg_etr_minutes
+        tests:
+          - not_null
+      - name: risk_score
+        description: 0..1, checked by tests/assert_risk_score_range.sql.
+        tests:
+          - not_null
+      - name: updated_at
+        tests:
+          - not_null
+
+  - name: district_risk_daily
+    description: Weather + history driven daily outage risk per district.
+    columns:
+      - name: district
+        tests:
+          - not_null
+          - relationships:
+              to: ref('dim_district')
+              field: district
+      - name: risk_date
+        tests:
+          - not_null
+      - name: risk_score
+        description: 0..1, checked by tests/assert_risk_score_range.sql.
+        tests:
+          - not_null
+      - name: risk_level
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["low", "moderate", "high", "severe"]
+      - name: expected_outages
+        tests:
+          - not_null

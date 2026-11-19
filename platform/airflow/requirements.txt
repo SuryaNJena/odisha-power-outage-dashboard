@@ -1,0 +1,23 @@
+# Runtime Python dependencies for the Airflow image (NOT the dbt venv).
+#
+# Versions are pinned to Apache Airflow 2.10.5's official constraints file
+# (constraints-2.10.5/constraints-3.12.txt) so that installing them cannot
+# disturb the base image's dependency resolution.  The Dockerfile also passes
+# that constraints file to pip as a belt-and-braces check.
+#
+#   pyspark            - daily batch job driver (spark-submit discovery + PySpark)
+#   psycopg2-binary    - direct Postgres access for loaders/mart/health DAGs
+#   requests           - Kavach scraper + Open-Meteo + Flink REST health checks
+#   beautifulsoup4     - reused by the repository scrap.py (table extraction)
+#   lxml               - pandas.read_html backend used by scrap.py
+#   pandas             - reused by the repository scrap.py (DataFrame -> CSV)
+#   numpy              - pandas 2.1.x is built against the NumPy 1.x ABI
+#   kafka-python-ng    - KafkaAdminClient + KafkaProducer for all topics
+pyspark==3.5.4
+psycopg2-binary==2.9.10
+requests==2.32.3
+beautifulsoup4==4.13.0
+lxml==5.3.0
+pandas==2.1.4
+numpy==1.26.4
+kafka-python-ng==2.2.3

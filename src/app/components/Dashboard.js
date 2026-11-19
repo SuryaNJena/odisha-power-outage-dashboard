@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { BACKEND_REPORT_URL } from '../config';
+import { REPORT_URL } from '../config';
 
 function formatReason(reason) {
   if (!reason) return '—';
@@ -49,6 +49,7 @@ export default function Dashboard({ dots = [] }) {
   const [search, setSearch] = useState('');
   const [reporting, setReporting] = useState(null);
   const [comment, setComment] = useState('');
+  const [severity, setSeverity] = useState(3);
   const [toast, setToast] = useState('');
 
   const districts = useMemo(
@@ -85,7 +86,7 @@ export default function Dashboard({ dots = [] }) {
   async function submitReport() {
     if (!reporting) return;
     try {
-      const res = await fetch(BACKEND_REPORT_URL, {
+      const res = await fetch(REPORT_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,6 +94,8 @@ export default function Dashboard({ dots = [] }) {
           gss: reporting.gss,
           feeder: reporting.feeder,
           comment,
+          severity: Number(severity),
+          reporter: 'web',
         }),
       });
       setToast(res.ok ? 'Report submitted — thank you!' : 'Failed to submit report.');
@@ -102,6 +105,7 @@ export default function Dashboard({ dots = [] }) {
     }
     setReporting(null);
     setComment('');
+    setSeverity(3);
     setTimeout(() => setToast(''), 4000);
   }
 
@@ -199,7 +203,7 @@ export default function Dashboard({ dots = [] }) {
                   <td style={{ whiteSpace: 'nowrap' }}>{d.start || '—'}</td>
                   <td style={{ whiteSpace: 'nowrap' }}>{d.end || '—'}</td>
                   <td>
-                    <button className="btn" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => setReporting(d)}>
+                    <button className="btn" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => { setSeverity(3); setReporting(d); }}>
                       ⚠ Report
                     </button>
                   </td>
@@ -230,6 +234,24 @@ export default function Dashboard({ dots = [] }) {
             <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 14 }}>
               <strong>{reporting.district}</strong> — {reporting.gss || reporting.feeder || 'unknown substation'}
             </p>
+            <div style={{ marginBottom: 12 }}>
+              <label className="form-label" htmlFor="report-severity">
+                Severity (1 = minor, 5 = extended outage)
+              </label>
+              <select
+                id="report-severity"
+                className="control"
+                style={{ width: '100%' }}
+                value={severity}
+                onChange={(e) => setSeverity(Number(e.target.value))}
+              >
+                <option value={1}>1 · Minor flicker</option>
+                <option value={2}>2 · Brief interruption</option>
+                <option value={3}>3 · Power out (default)</option>
+                <option value={4}>4 · Long outage</option>
+                <option value={5}>5 · Extended outage</option>
+              </select>
+            </div>
             <textarea
               className="control"
               rows={4}
