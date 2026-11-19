@@ -142,6 +142,15 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
         minZoom: 6,
         maxZoom: 19,
       });
+
+      // Dedicated pane for outage dots, above the choropleth overlay pane (400).
+      // Leaflet's `bringToFront()` on a hovered district moves that polygon to the
+      // end of the overlay SVG, which otherwise paints it over the dots; a separate
+      // pane keeps the dots on top regardless of hover or layer re-adds.
+      const dotPane = map.createPane('odishaDots');
+      dotPane.style.zIndex = 450;
+      dotPane.style.pointerEvents = 'auto';
+
       leaf.control.zoom({ position: 'topright' }).addTo(map);
 
       // Custom "zoom to fit" button (parity with the old reset-view button).
@@ -313,6 +322,7 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
         weight: 1.2,
         fillColor: dotColor,
         fillOpacity: 1,
+        pane: 'odishaDots',
       });
       m.bindTooltip(dotTooltip(d), {
         direction: 'top',

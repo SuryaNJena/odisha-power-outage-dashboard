@@ -286,6 +286,21 @@ table.data-table {
   font-size: 13px;
 }
 
+/* District polygons are keyboard-focusable (tabindex=0 from Leaflet's SVG
+   renderer), which is good, but a mouse click leaves Chrome's boxy default
+   focus ring around the whole polygon. Drop the outline and use a crisp stroke
+   highlight instead, so keyboard users still get a clear focus cue without the
+   bounding square. */
+.leaflet-container .leaflet-interactive:focus {
+  outline: none;
+}
+
+.leaflet-container .leaflet-interactive:focus-visible {
+  outline: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
 .leaflet-bar {
   border: 1px solid var(--border) !important;
   border-radius: var(--radius-sm) !important;
