@@ -37,6 +37,9 @@ func (s *AppState) setCache(key string, body []byte) {
 }
 
 func (s *AppState) ensureStore() *Store {
+	if s.cfg.SnapshotOnly {
+		return nil
+	}
 	s.dbMu.Lock()
 	defer s.dbMu.Unlock()
 	if s.store != nil {
@@ -578,6 +581,18 @@ func (s *AppState) handleHealth(w http.ResponseWriter, r *http.Request) {
 	components := map[string]HealthComponent{}
 	overall := "ok"
 
+	if s.cfg.SnapshotOnly {
+		// Check readability without decoding the feed or probing optional services.
+		for _, path := range s.cfg.SnapshotPaths {
+			if f, err := os.Open(path); err == nil {
+				f.Close()
+				writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "mode": "snapshot"})
+				return
+			}
+		}
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "missing snapshot", "mode": "snapshot"})
+		return
+	}
 	// Postgres
 	start := time.Now()
 	st := s.ensureStore()

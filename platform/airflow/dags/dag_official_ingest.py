@@ -105,7 +105,7 @@ def run_publish_kafka(**context) -> dict:
 with DAG(
     dag_id="odisha_official_ingest",
     description="Scrape Kavach official outages, load raw, dbt run/test, publish mart JSON + Kafka",
-    schedule="*/30 * * * *",
+    schedule=oc.optional_schedule("*/30 * * * *"),
     start_date=oc.DAG_START_DATE,
     catchup=False,
     max_active_runs=1,

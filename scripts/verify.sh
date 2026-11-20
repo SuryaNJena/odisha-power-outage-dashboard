@@ -8,6 +8,16 @@ fail=0
 
 section() { printf '\n=== %s ===\n' "$1"; }
 
+if curl -fsS --max-time 5 localhost:3001/api/health | grep -q '"mode":"snapshot"'; then
+  section "manual snapshot"
+  curl -fsS --max-time 15 localhost:3001/api/mapdata |
+    python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["source"]=="snapshot" and d["updatedAt"] and d["total"]==len(d["dots"]); print("Outages:",d["total"],"Updated:",d["updatedAt"])' || exit 1
+  curl -fsS localhost:3001/api/features | python3 -c 'import json,sys; assert json.load(sys.stdin)["analytics"] is False' || exit 1
+  echo "VERIFY: OK (snapshot mode)"
+  exit 0
+fi
+export COMPOSE_FILE=docker-compose.full.yml
+
 section "containers"
 docker compose ps --format 'table {{.Name}}\t{{.Status}}' || fail=1
 

@@ -1012,3 +1012,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+def optional_schedule(cron: str) -> str | None:
+    return cron if os.environ.get("ODISHA_SCHEDULES", "off").lower() == "on" else None

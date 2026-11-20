@@ -448,6 +448,7 @@ def write_outages_table(
     aliases: dict,
     centroids: dict,
     cache: dict,
+    *, cached_only: bool = False,
 ) -> tuple[int, int]:
     """Resolve + geocode each raw row and store the enriched result in SQLite."""
     conn.execute("DELETE FROM outages")
@@ -467,7 +468,7 @@ def write_outages_table(
             unknown += 1
             continue
 
-        loc = locate(raw["gss"], district, cache)
+        loc = cache.get(f"{raw['gss']}|{district}", {}) if cached_only else locate(raw["gss"], district, cache)
         if loc.get("lat") is not None:
             lat, lon = disperse(loc["lat"], loc["lon"], True)
             geocoded = True

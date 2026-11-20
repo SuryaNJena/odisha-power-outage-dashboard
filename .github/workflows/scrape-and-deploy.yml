@@ -19,6 +19,7 @@ concurrency:
 
 jobs:
   scrape-and-build:
+    if: github.event_name == 'workflow_dispatch' || vars.ODISHA_SCHEDULES == 'on'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

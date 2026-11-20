@@ -168,7 +168,7 @@ def emit_heartbeats(**context) -> dict[str, Any]:
 with DAG(
     dag_id="odisha_platform_health",
     description="10-minute heartbeat: Postgres/Kafka/Flink/Spark checks, Flink SQL re-submit if missing",
-    schedule="*/10 * * * *",
+    schedule=oc.optional_schedule("*/10 * * * *"),
     start_date=oc.DAG_START_DATE,
     catchup=False,
     max_active_runs=1,

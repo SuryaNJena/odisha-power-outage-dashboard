@@ -69,7 +69,7 @@ def run_publish_weather(**context) -> dict:
 with DAG(
     dag_id="odisha_weather_ingest",
     description="Hourly Open-Meteo district forecast -> raw.weather_hourly -> Kafka weather-observations",
-    schedule="5 * * * *",
+    schedule=oc.optional_schedule("5 * * * *"),
     start_date=oc.DAG_START_DATE,
     catchup=False,
     max_active_runs=1,

@@ -53,7 +53,7 @@ DBT_TASK_TIMEOUT = timedelta(minutes=45)
 with DAG(
     dag_id="odisha_dbt_daily",
     description="Daily full dbt seed/run/test/docs for the Odisha platform",
-    schedule="30 2 * * *",
+    schedule=oc.optional_schedule("30 2 * * *"),
     start_date=oc.DAG_START_DATE,
     catchup=False,
     max_active_runs=1,

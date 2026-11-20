@@ -1,5 +1,6 @@
 'use client';
 
+import { useAnalytics } from './platformMode';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BASE_PATH } from './config';
@@ -84,6 +85,7 @@ function MoonIcon() {
 
 const Navigation = () => {
   const { theme, toggle } = useTheme();
+  const analytics = useAnalytics();
   const pathname = usePathname();
   const current = cleanPathname(pathname);
   const isDark = theme === 'dark';
@@ -98,7 +100,7 @@ const Navigation = () => {
       </div>
 
       <div className="nav-links">
-        {LINKS.map((link) => {
+        {LINKS.filter(link => analytics || link.href === '/').map((link) => {
           const active = current === link.href;
           return (
             <Link

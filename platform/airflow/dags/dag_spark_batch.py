@@ -68,7 +68,7 @@ def run_spark_batch(**context) -> dict:
 with DAG(
     dag_id="odisha_spark_batch",
     description="Daily spark-submit of platform/spark/jobs/daily_batch.py (ML tables + parquet archive)",
-    schedule="0 3 * * *",
+    schedule=oc.optional_schedule("0 3 * * *"),
     start_date=oc.DAG_START_DATE,
     catchup=False,
     max_active_runs=1,

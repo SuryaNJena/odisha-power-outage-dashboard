@@ -8,7 +8,7 @@
 set -euo pipefail
 
 ROOT="${ROOT:-$HOME/odisha-platform}"
-COMPOSE_FILE="$ROOT/platform/docker-compose.yml"
+COMPOSE_FILE="${COMPOSE_FILE:-$ROOT/platform/docker-compose.yml}"
 cd "$ROOT"
 # Never let the dev-only .env.local leak into the production build.
 rm -f .env.local
@@ -62,6 +62,11 @@ cp -a data/mappings/. platform/app/data/mappings/
 cp -a data/mart/outages.json platform/app/data/mart/outages.json 2>/dev/null || true
 
 echo "==> [4/4] compose build + up"
+if ! docker compose -f "$COMPOSE_FILE" config --services | grep -qx airflow; then
+  docker compose -f "$COMPOSE_FILE" build app
+  bash "$ROOT/scripts/power-mode.sh" snapshot
+  exit 0
+fi
 docker compose -f "$COMPOSE_FILE" build app airflow
 docker compose -f "$COMPOSE_FILE" up -d --remove-orphans
 docker compose -f "$COMPOSE_FILE" ps

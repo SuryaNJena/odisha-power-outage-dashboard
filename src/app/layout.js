@@ -1,3 +1,4 @@
+import { PlatformProvider } from './platformMode';
 import { Fira_Sans, Fira_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "./theme";
@@ -40,7 +41,7 @@ export default function RootLayout({ children }) {
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className={`${firaSans.variable} ${firaMono.variable}`}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider><PlatformProvider>{children}</PlatformProvider></ThemeProvider>
       </body>
     </html>
   );

@@ -18,6 +18,7 @@ import (
 const appVersion = "2.0.0-platform"
 
 type Config struct {
+	SnapshotOnly  bool
 	Port          string
 	DatabaseURL   string
 	KafkaBroker   string
@@ -53,16 +54,17 @@ func env(key, fallback string) string {
 
 func loadConfig() Config {
 	cfg := Config{
-		Port:        env("PORT", "3001"),
-		DatabaseURL: env("DATABASE_URL", ""),
-		KafkaBroker: env("KAFKA_BROKERS", env("KAFKA_BOOTSTRAP", "kafka:9092")),
-		KafkaTopic:  env("KAFKA_TOPIC_REPORTS", "user-reports"),
-		DataDir:     env("DATA_DIR", "/opt/odisha-data"),
-		WebDir:      env("WEB_DIR", "/app/out"),
-		AirflowURL:  strings.TrimRight(env("AIRFLOW_URL", ""), "/"),
-		AirflowUser: env("AIRFLOW_USER", ""),
-		AirflowPass: env("AIRFLOW_PASSWORD", ""),
-		FlinkURL:    strings.TrimRight(env("FLINK_URL", "http://flink-jobmanager:8081"), "/"),
+		SnapshotOnly: env("ODISHA_MODE", "snapshot") != "full",
+		Port:         env("PORT", "3001"),
+		DatabaseURL:  env("DATABASE_URL", ""),
+		KafkaBroker:  env("KAFKA_BROKERS", env("KAFKA_BOOTSTRAP", "kafka:9092")),
+		KafkaTopic:   env("KAFKA_TOPIC_REPORTS", "user-reports"),
+		DataDir:      env("DATA_DIR", "/opt/odisha-data"),
+		WebDir:       env("WEB_DIR", "/app/out"),
+		AirflowURL:   strings.TrimRight(env("AIRFLOW_URL", ""), "/"),
+		AirflowUser:  env("AIRFLOW_USER", ""),
+		AirflowPass:  env("AIRFLOW_PASSWORD", ""),
+		FlinkURL:     strings.TrimRight(env("FLINK_URL", "http://flink-jobmanager:8081"), "/"),
 	}
 	if cfg.DatabaseURL == "" {
 		log.Printf("WARNING: DATABASE_URL is empty — serving only the snapshot")
@@ -137,25 +139,38 @@ func main() {
 	}
 
 	// The database may still be initialising; retry lazily from handlers.
-	if st, err := OpenStore(cfg.DatabaseURL); err == nil {
-		state.store = st
-		log.Printf("postgres connected")
-	} else {
-		log.Printf("postgres unavailable at startup: %v", err)
-	}
-	state.producer = NewProducer(cfg.KafkaBroker, cfg.KafkaTopic)
-	if state.producer != nil {
-		log.Printf("kafka producer enabled: %s topic=%s", cfg.KafkaBroker, cfg.KafkaTopic)
+	if !cfg.SnapshotOnly {
+		if st, err := OpenStore(cfg.DatabaseURL); err == nil {
+			state.store = st
+			log.Printf("postgres connected")
+		} else {
+			log.Printf("postgres unavailable at startup: %v", err)
+		}
+		state.producer = NewProducer(cfg.KafkaBroker, cfg.KafkaTopic)
+		if state.producer != nil {
+			log.Printf("kafka producer enabled: %s topic=%s", cfg.KafkaBroker, cfg.KafkaTopic)
+		}
 	}
 	defer state.producer.Close()
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/mapdata", state.cors(state.handleMapData))
-	mux.HandleFunc("/api/realtime", state.cors(state.handleRealtime))
-	mux.HandleFunc("/api/reliability", state.cors(state.handleReliability))
-	mux.HandleFunc("/api/risk", state.cors(state.handleRisk))
-	mux.HandleFunc("/api/report", state.cors(state.handleReport))
-	mux.HandleFunc("/api/refresh", state.cors(state.handleRefresh))
+	mux.HandleFunc("/api/features", state.cors(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]bool{"analytics": !cfg.SnapshotOnly})
+	}))
+	if cfg.SnapshotOnly {
+		for _, route := range []string{"/api/realtime", "/api/reliability", "/api/risk", "/api/refresh", "/api/report"} {
+			mux.HandleFunc(route, state.cors(func(w http.ResponseWriter, r *http.Request) {
+				writeJSON(w, http.StatusServiceUnavailable, map[string]any{"available": false, "mode": "snapshot", "error": "Disabled in manual snapshot mode"})
+			}))
+		}
+	} else {
+		mux.HandleFunc("/api/realtime", state.cors(state.handleRealtime))
+		mux.HandleFunc("/api/reliability", state.cors(state.handleReliability))
+		mux.HandleFunc("/api/risk", state.cors(state.handleRisk))
+		mux.HandleFunc("/api/report", state.cors(state.handleReport))
+		mux.HandleFunc("/api/refresh", state.cors(state.handleRefresh))
+	}
 	mux.HandleFunc("/api/health", state.cors(state.handleHealth))
 	mux.HandleFunc("/", state.cors(state.staticHandler()))
 

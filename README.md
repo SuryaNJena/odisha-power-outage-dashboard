@@ -1,5 +1,10 @@
 # Odisha Live Power Outage Dashboard + Data Platform
 
+The laptop deployment defaults to a snapshot map with manual refresh and no
+background data services. See [laptop modes and refresh commands](platform/README.md#laptop-mode-default).
+The data platform described below is available in full mode.
+
+
 Live planned & ongoing power outage map for Odisha, plus a near-real-time
 crowd-report pipeline and a batch analytics/ML layer.
 

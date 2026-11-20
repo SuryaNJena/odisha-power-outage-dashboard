@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnalyticsOnly } from '../platformMode';
 import Navigation from '../navigation';
 import TrendChart from '../components/TrendChart';
 import StatusPanel from '../components/StatusPanel';
@@ -236,6 +237,10 @@ function QuickReport({ districts }) {
 }
 
 export default function LivePage() {
+  return <AnalyticsOnly><ReportPage /></AnalyticsOnly>;
+}
+
+function ReportPage() {
   const { data: raw, error, loading, reload } = useApiData(REALTIME_URL, { intervalMs: POLL_MS });
   const live = useMemo(() => (raw ? normalizeRealtime(raw) : null), [raw]);
 

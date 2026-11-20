@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { AnalyticsOnly } from '../platformMode';
 import Navigation from '../navigation';
 import TrendChart from '../components/TrendChart';
 import StatusPanel from '../components/StatusPanel';
@@ -51,6 +52,10 @@ function normalizeReliability(payload) {
 }
 
 export default function ReliabilityPage() {
+  return <AnalyticsOnly><ReportPage /></AnalyticsOnly>;
+}
+
+function ReportPage() {
   const [days, setDays] = useState(30);
 
   return (

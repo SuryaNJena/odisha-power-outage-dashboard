@@ -4,7 +4,42 @@ Everything here runs on the self-hosted Debian server under
 `~/odisha-platform/platform` via `docker compose`. The public app is
 <https://odishablackouts.356189.xyz> (Cloudflare Tunnel → `127.0.0.1:3001`).
 
-## Services
+## Laptop mode (default)
+
+Only the Go web service runs between refreshes. It reads the last published map
+from the existing data volume. Analytics pages, crowd reports and polling are
+disabled. Map filters, layers and the time ruler work offline from the pipelines.
+Use these commands from the project root on the server:
+
+```bash
+bash scripts/power-mode.sh snapshot  # switch an existing deployment and stop its optional services
+bash scripts/power-mode.sh refresh   # fetch the four DISCOM feeds once
+bash scripts/verify.sh
+```
+
+Refresh runs a short-lived Python process with half a CPU and a 384 MiB RAM limit.
+It uses RAM for CSVs and SQLite, cached station coordinates or district centroids,
+and atomically replaces one JSON file. Incomplete feeds or zero usable records
+leave the previous map in place. The snapshot refresh does not populate warehouse
+history or calculate reliability, ETR or risk. The displayed update time is the
+age of the feed. Reload the page after refresh (API cache up to 20 seconds).
+
+For a broker-only demo run `bash scripts/power-mode.sh kafka-on`, then
+`bash scripts/power-mode.sh kafka-off`. Snapshot mode does not produce events.
+Existing Kafka volumes are retained. Broker defaults use 4 MiB log segments and
+16 MiB retention per partition; active segments, metadata and other internal
+topics also occupy disk. This is not a total disk quota.
+
+For the original platform run `bash scripts/power-mode.sh full` (uses
+`platform/docker-compose.full.yml`). Airflow schedules stay off unless you set
+`ODISHA_SCHEDULES=on` in `platform/.env` and run the full command again.
+Return to snapshot with the first command above. The full platform uses the same
+database and checkpoint volumes. GitHub Actions has a separate repository
+variable, `ODISHA_SCHEDULES`; its scrape job defaults to manual dispatch only.
+On a fresh laptop without the Python worker image, Compose builds it on first
+manual refresh; the existing server reuses its installed image.
+
+## Services in full mode
 
 | Container | Role | Published |
 |---|---|---|

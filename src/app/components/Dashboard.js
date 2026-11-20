@@ -1,5 +1,6 @@
 'use client';
 
+import { useAnalytics } from '../platformMode';
 import React, { useMemo, useState } from 'react';
 import { REPORT_URL } from '../config';
 
@@ -92,6 +93,7 @@ export default function Dashboard({ dots = [] }) {
   const [district, setDistrict] = useState('all');
   const [reason, setReason] = useState('all');
   const [search, setSearch] = useState('');
+  const analytics = useAnalytics();
   const [reporting, setReporting] = useState(null);
   const [comment, setComment] = useState('');
   const [severity, setSeverity] = useState(3);
@@ -233,7 +235,7 @@ export default function Dashboard({ dots = [] }) {
               <col style={{ width: '14%' }} />
               <col style={{ width: '10.5%' }} />
               <col style={{ width: '10.5%' }} />
-              <col style={{ width: '9%' }} />
+              {analytics && <col style={{ width: '9%' }} />}
             </colgroup>
             <thead>
               <tr>
@@ -244,7 +246,7 @@ export default function Dashboard({ dots = [] }) {
                 <th scope="col">Reason</th>
                 <th scope="col">Start</th>
                 <th scope="col">Restore</th>
-                <th scope="col" aria-label="Actions"></th>
+                {analytics && <th scope="col" aria-label="Actions"></th>}
               </tr>
             </thead>
             <tbody>
@@ -257,7 +259,7 @@ export default function Dashboard({ dots = [] }) {
                   <td title={d.reason}>{formatReason(d.reason)}</td>
                   <td className="dt-cell"><FeedTime value={d.start} /></td>
                   <td className="dt-cell"><FeedTime value={d.end} /></td>
-                  <td className="action-cell">
+                  {analytics && <td className="action-cell">
                     <button
                       className="btn btn-compact"
                       type="button"
@@ -267,12 +269,12 @@ export default function Dashboard({ dots = [] }) {
                     >
                       Report
                     </button>
-                  </td>
+                  </td>}
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>
+                  <td colSpan={analytics ? 8 : 7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>
                     No outages match the current filters.
                   </td>
                 </tr>
