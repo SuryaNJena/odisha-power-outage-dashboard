@@ -26,7 +26,17 @@ const firaMono = Fira_Mono({
   fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Consolas", "monospace"],
 });
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 export const metadata = {
+  icons: {
+    icon: [
+      { url: `${basePath}/favicon.ico`, sizes: "any" },
+      { url: `${basePath}/favicon-32x32.png`, type: "image/png", sizes: "32x32" },
+      { url: `${basePath}/favicon-16x16.png`, type: "image/png", sizes: "16x16" },
+    ],
+    apple: { url: `${basePath}/apple-touch-icon.png`, sizes: "180x180" },
+  },
   title: "Odisha Live Power Outage",
   description: "Made with ❤️ in Odisha",
 };
