@@ -342,13 +342,14 @@ function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHe
     if (!showDots) return;
 
     const dotColor = cssVar('--official-outage-dot');
+    const borderColor = cssVar('--bg-elev');
     const group = leaf.layerGroup();
     for (const d of prepareDots(dots)) {
       if (!Number.isFinite(d.lat) || !Number.isFinite(d.lon)) continue;
       const m = leaf.circleMarker([d.lat, d.lon], {
         radius: 4.5,
-        color: dotColor,
-        weight: 1.2,
+        color: borderColor,
+        weight: 1.5,
         fillColor: dotColor,
         fillOpacity: 1,
         pane: 'odishaDots',
