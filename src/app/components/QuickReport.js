@@ -19,7 +19,7 @@ const SEVERITY_OPTIONS = [
   [5, '5 · Extended outage'],
 ];
 
-export default function QuickReport({ districts = FALLBACK_DISTRICTS }) {
+export default function QuickReport({ districts = FALLBACK_DISTRICTS, onSaved }) {
   const [district, setDistrict] = useState('');
   const [severity, setSeverity] = useState(3);
   const [comment, setComment] = useState('');
@@ -55,6 +55,7 @@ export default function QuickReport({ districts = FALLBACK_DISTRICTS }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           district,
+          kind: 'outage',
           gss: '',
           feeder: '',
           comment: comment.trim(),
@@ -63,7 +64,9 @@ export default function QuickReport({ districts = FALLBACK_DISTRICTS }) {
         }),
       });
       if (!res.ok) throw new Error(`API responded ${res.status}`);
-      notify('ok', 'Your outage report was saved.');
+      const { stored } = await res.json();
+      notify('ok', stored ? 'Your outage report was saved.' : 'Your outage report was queued.');
+      if (stored) onSaved?.();
       setComment('');
     } catch (err) {
       console.error('Failed to submit outage report:', err);

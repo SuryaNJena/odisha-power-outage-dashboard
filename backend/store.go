@@ -91,13 +91,13 @@ func (s *Store) MapData(ctx context.Context) (*MapResponse, error) {
 	counts := map[string]int{}
 	for rows.Next() {
 		var (
-			d          Dot
-			date       string
-			planned    bool
-			duration   float64
-			customers  int
-			cause      string
-			etr        sql.NullTime
+			d         Dot
+			date      string
+			planned   bool
+			duration  float64
+			customers int
+			cause     string
+			etr       sql.NullTime
 		)
 		if err := rows.Scan(
 			&d.District, &d.Circle, &d.Division, &d.GSS,
@@ -428,14 +428,57 @@ func (s *Store) riskFromML(ctx context.Context) (*RiskResponse, error) {
 // Reports
 // ---------------------------------------------------------------------------
 
+func (s *Store) MapReports(ctx context.Context) ([]MapReport, error) {
+	rows, err := s.db.QueryContext(ctx, `
+        WITH recent AS (
+            SELECT district, regexp_replace(lower(district), '[^a-z0-9]+', '', 'g') AS district_key,
+                   count(*) AS reports, max(reported_at) AS latest_at
+            FROM raw.user_reports
+            WHERE reported_at >= now() - interval '24 hours'
+              AND (source = 'web-outage' OR (
+                  source = 'web' AND coalesce(trim(gss), '') = '' AND coalesce(trim(feeder), '') = ''
+              ))
+            GROUP BY district
+        )
+        SELECT c.district, c.lat, c.lon, sum(r.reports)::bigint, max(r.latest_at)
+        FROM recent r
+        LEFT JOIN raw.district_aliases a ON a.alias = r.district_key
+        JOIN raw.district_centroids c
+          ON c.district = a.district OR (a.district IS NULL AND lower(c.district) = lower(r.district))
+        WHERE c.lat IS NOT NULL AND c.lon IS NOT NULL
+        GROUP BY c.district, c.lat, c.lon
+        ORDER BY c.district`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	reports := make([]MapReport, 0)
+	for rows.Next() {
+		var report MapReport
+		if err := rows.Scan(&report.District, &report.Lat, &report.Lon, &report.Count, &report.LatestAt); err != nil {
+			return nil, err
+		}
+		reports = append(reports, report)
+	}
+	return reports, rows.Err()
+}
+
 func (s *Store) InsertReport(ctx context.Context, r ReportInput, reportID string) error {
+	source := "web"
+	switch r.Kind {
+	case "outage":
+		source = "web-outage"
+	case "correction":
+		source = "web-correction"
+	}
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO raw.user_reports
 			(report_id, district, gss, feeder, comment, severity, reporter,
 			 lat, lon, reported_at, source)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),'web')
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),$10)
 		ON CONFLICT (report_id) DO NOTHING`,
-		reportID, r.District, r.GSS, r.Feeder, r.Comment, r.Severity, "web", r.Lat, r.Lon)
+		reportID, r.District, r.GSS, r.Feeder, r.Comment, r.Severity, "web", r.Lat, r.Lon, source)
 	return err
 }
 

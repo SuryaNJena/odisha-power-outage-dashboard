@@ -155,6 +155,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/mapdata", state.cors(state.handleMapData))
+	mux.HandleFunc("/api/map-reports", state.cors(state.handleMapReports))
 	mux.HandleFunc("/api/features", state.cors(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]bool{"analytics": !cfg.SnapshotOnly, "reporting": true, "manualRefresh": cfg.SnapshotOnly})
 	}))

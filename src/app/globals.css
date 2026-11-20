@@ -11,6 +11,8 @@
   --green: #22c55e;
   --yellow: #fbbf24;
   --red: #ef4444;
+  --official-outage-dot: #60a5fa;
+  --community-report-dot: #c084fc;
   --map-bg: #0b0e17;
   --map-path: #1b2136;
   --map-path-hover: #283152;
@@ -34,6 +36,8 @@
   --green: #16a34a;
   --yellow: #d97706;
   --red: #dc2626;
+  --official-outage-dot: #2563eb;
+  --community-report-dot: #7e22ce;
   --map-bg: #eef2f8;
   --map-path: #d6e0ec;
   --map-path-hover: #bccbe0;
@@ -387,6 +391,29 @@ table.data-table {
   box-shadow: var(--shadow);
   padding: 8px 12px;
 }
+
+.map-legend-dots {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text);
+}
+
+.map-legend-dots span {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.map-dot-key {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.map-dot-key.official { background: var(--official-outage-dot); }
+.map-dot-key.community { background: var(--community-report-dot); }
 
 @media (max-width: 640px) {
   .map-legend {

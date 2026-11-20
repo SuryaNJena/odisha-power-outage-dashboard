@@ -60,6 +60,7 @@ export function useApiData(url, { intervalMs = 0 } = {}) {
   const reload = useCallback(() => setNonce((n) => n + 1), []);
 
   useEffect(() => {
+    if (!url) return;
     let cancelled = false;
     let timer = null;
     let controller = null;

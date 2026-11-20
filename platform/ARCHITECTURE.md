@@ -14,6 +14,7 @@ flowchart TD
   T --> A["127.0.0.1:3001 · Go API + exported Next.js files"]
   A -->|"GET /api/mapdata"| C["odisha_app_data: mart/outages.json"]
   A -->|"POST /api/report"| R[("PostgreSQL: raw.user_reports")]
+  A -->|"GET /api/map-reports: aggregate by district"| R
   A -->|"POST /api/refresh: request; GET: status"| W["Private refresh service · port 8091"]
   W -->|"Lock singleton row; record attempt"| L[("PostgreSQL: ops.map_refresh")]
   W -->|"Eligible click only"| P["Short-lived scraper + loader"]
@@ -37,6 +38,16 @@ is three hours after the later of the last attempt and the published snapshot's
 timestamp. Friends clicking together share the job. An interrupted or failed
 attempt retains the old map and consumes the cooldown. Page loads and status
 reads never start a job. The browser polls only while checking a requested job.
+
+The map reads the last 24 hours of community outage reports directly from
+PostgreSQL in either mode. Go joins them to the existing district aliases and
+centroids and returns only district, location, count, and latest report time.
+A confirmed save reloads that layer immediately. Other open, visible maps
+check once per minute. Purple markers indicate an unverified report at an
+approximate district location. They are independent of the official timeline,
+heatmap, and snapshot refresh. New corrections carry the `web-correction`
+source. Older `web` submissions with station or feeder details are treated as
+corrections for this view.
 
 ## Full mode (optional)
 

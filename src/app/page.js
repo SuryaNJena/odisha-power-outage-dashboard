@@ -8,7 +8,8 @@ import RefreshButton from './components/RefreshButton';
 import Navigation from './navigation';
 import Dashboard from './components/Dashboard';
 import DateTimeKnob from './components/DateTimeKnob';
-import { BACKEND_MAPDATA_URL, DATA_URL } from './config';
+import { useApiData } from './useApiData';
+import { BACKEND_MAPDATA_URL, DATA_URL, MAP_REPORTS_URL } from './config';
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const HOUR_MS = 3600000;
@@ -72,6 +73,10 @@ const OdishaMap = dynamic(() => import('./components/OdishaMap'), {
 
 export default function HomePage() {
   const features = useFeatures();
+  const { data: reports, reload: reloadReports } = useApiData(
+    features?.reporting ? MAP_REPORTS_URL : null,
+    { intervalMs: 60_000 }
+  );
   const [data, setData] = useState({ districts: [], dots: [], total: 0, updatedAt: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -233,7 +238,7 @@ export default function HomePage() {
               {features?.manualRefresh && <RefreshButton onData={setData} />}
             </div>
           </div>
-          <OdishaMap dots={visibleDots} districts={districtCounts} showDots={showDots} showHeatmap={showHeatmap} />
+          <OdishaMap reports={reports} dots={visibleDots} districts={districtCounts} showDots={showDots} showHeatmap={showHeatmap} />
         </section>
 
         {/* Date-time dial: exact hourly selection, adaptive tick density, zoomable */}
@@ -253,7 +258,7 @@ export default function HomePage() {
           </h2>
           {features?.reporting && <details className="landing-report">
             <summary>Report an outage</summary>
-            <QuickReport />
+            <QuickReport onSaved={reloadReports} />
           </details>}
           <Dashboard dots={visibleDots} />
         </div>

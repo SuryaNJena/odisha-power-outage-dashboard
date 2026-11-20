@@ -6,6 +6,11 @@ import 'leaflet/dist/leaflet.css';
 import { MAP_URL } from '../config';
 import { useTheme } from '../theme';
 
+const REPORT_TIME = new Intl.DateTimeFormat('en-IN', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+  timeZone: 'Asia/Kolkata',
+});
 const FIT_OPTIONS = { padding: [12, 12], maxZoom: 9 };
 const MAX_DOTS = 600; // hard cap: beyond this, aggregate dots by substation
 
@@ -101,7 +106,7 @@ function dotTooltip(d) {
  *  - Outage dots as static blue markers (capped at MAX_DOTS).
  *  - Native Leaflet pan/zoom + a custom "zoom to fit" control.
  */
-function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = true }) {
+function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHeatmap = true }) {
   const wrapRef = useRef(null);
   const leafRef = useRef(null);
   const mapRef = useRef(null);
@@ -153,6 +158,7 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
       const dotPane = map.createPane('odishaDots');
       dotPane.style.zIndex = 450;
       dotPane.style.pointerEvents = 'auto';
+      map.createPane('odishaReports').style.zIndex = 460;
 
       const zoomIcon = (path) => `<svg viewBox="0 0 20 20" width="18" height="18"
         aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
@@ -333,7 +339,7 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
     }
     if (!showDots) return;
 
-    const dotColor = dark ? '#60a5fa' : '#2563eb';
+    const dotColor = cssVar('--official-outage-dot');
     const group = leaf.layerGroup();
     for (const d of prepareDots(dots)) {
       if (!Number.isFinite(d.lat) || !Number.isFinite(d.lon)) continue;
@@ -355,6 +361,38 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
     group.addTo(map);
     dotLayerRef.current = group;
   }, [ready, dots, dark, showDots]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const leaf = leafRef.current;
+    if (!ready || !map || !leaf || !showDots || !reports?.length) return;
+
+    const group = leaf.layerGroup();
+    const fillColor = cssVar('--community-report-dot');
+    const borderColor = cssVar('--bg-elev');
+    for (const report of reports) {
+      const { district, lat, lon, count, latestAt } = report;
+      if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+      const latest = REPORT_TIME.format(new Date(latestAt));
+      leaf.circleMarker([lat, lon], {
+        radius: 6,
+        color: borderColor,
+        weight: 1.5,
+        fillColor,
+        fillOpacity: 1,
+        pane: 'odishaReports',
+        className: 'community-report-marker',
+      }).bindTooltip(
+        `<div class="tt-title">${escapeHtml(district)}</div>
+         <div class="tt-sub">${count} unverified community report${count === 1 ? '' : 's'} (last 24h)</div>
+         <div class="tt-sub">Latest report: ${escapeHtml(latest)} IST</div>
+         <div class="tt-sub">Approximate district location</div>`,
+        { direction: 'auto', className: 'odisha-tooltip' }
+      ).addTo(group);
+    }
+    group.addTo(map);
+    return () => map.removeLayer(group);
+  }, [ready, reports, dark, showDots]);
 
   return (
     <div className="map-frame">
@@ -386,6 +424,12 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
           />
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Many</span>
         </div>
+        {Array.isArray(reports) && showDots && (
+          <div className="map-legend-dots">
+            <span><i className="map-dot-key official" aria-hidden="true" /> Official outages</span>
+            <span><i className="map-dot-key community" aria-hidden="true" /> Community reports · 24h</span>
+          </div>
+        )}
       </div>
     </div>
   );

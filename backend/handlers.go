@@ -450,8 +450,33 @@ func (s *AppState) handleRisk(w http.ResponseWriter, r *http.Request) {
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/report
+// GET /api/map-reports and POST /api/report
 // ---------------------------------------------------------------------------
+
+func (s *AppState) handleMapReports(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		w.Header().Set("Allow", "GET")
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+		return
+	}
+	st := s.ensureStore()
+	if st == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "community reports unavailable"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+	reports, err := st.MapReports(ctx)
+	if err != nil {
+		log.Printf("map reports: %v", err)
+		if isConnErr(err) {
+			s.dropStore()
+		}
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "community reports unavailable"})
+		return
+	}
+	writeJSON(w, http.StatusOK, reports)
+}
 
 func (s *AppState) handleReport(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -466,6 +491,10 @@ func (s *AppState) handleReport(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.Unmarshal(body, &in); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		return
+	}
+	if in.Kind != "" && in.Kind != "outage" && in.Kind != "correction" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid report kind"})
 		return
 	}
 	in.District = strings.TrimSpace(in.District)
@@ -488,7 +517,7 @@ func (s *AppState) handleReport(w http.ResponseWriter, r *http.Request) {
 
 	reportID := newReportID()
 	queued := false
-	if s.producer != nil {
+	if s.producer != nil && in.Kind != "correction" {
 		if err := s.producer.PublishReport(ctx, in, reportID); err != nil {
 			log.Printf("kafka publish failed: %v", err)
 		} else {

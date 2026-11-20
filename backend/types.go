@@ -1,5 +1,7 @@
 package main
 
+import "time"
+
 // Wire types shared by the API and the snapshot fallback. JSON field names are
 // a contract with the Next.js frontend (see platform/CONTRACT.md).
 
@@ -134,7 +136,17 @@ type RiskResponse struct {
 	Message   string         `json:"message,omitempty"`
 }
 
+// MapReport is a district-level aggregate for public display.
+type MapReport struct {
+	District string    `json:"district"`
+	Lat      float64   `json:"lat"`
+	Lon      float64   `json:"lon"`
+	Count    int       `json:"count"`
+	LatestAt time.Time `json:"latestAt"`
+}
+
 type ReportInput struct {
+	Kind     string   `json:"kind"`
 	District string   `json:"district"`
 	GSS      string   `json:"gss"`
 	Feeder   string   `json:"feeder"`

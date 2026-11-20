@@ -138,6 +138,7 @@ export default function Dashboard({ dots = [] }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           district: reporting.district,
+          kind: 'correction',
           gss: reporting.gss,
           feeder: reporting.feeder,
           comment,

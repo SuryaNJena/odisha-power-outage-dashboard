@@ -14,6 +14,7 @@ export const BASE_PATH = BASE;
 export const MAP_URL = `${BASE}/Odisha.json`;
 export const DATA_URL = `${BASE}/outage_data.json`;
 export const BACKEND_URL = BACKEND_BASE;
+export const MAP_REPORTS_URL = `${BACKEND_URL}/api/map-reports`;
 export const BACKEND_MAPDATA_URL = `${BACKEND_URL}/api/mapdata`;
 export const BACKEND_REPORT_URL = `${BACKEND_URL}/api/report`;
 
