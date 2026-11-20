@@ -153,7 +153,14 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
       dotPane.style.zIndex = 450;
       dotPane.style.pointerEvents = 'auto';
 
-      leaf.control.zoom({ position: 'topright' }).addTo(map);
+      const zoomIcon = (path) => `<svg viewBox="0 0 20 20" width="18" height="18"
+        aria-hidden="true" focusable="false" fill="none" stroke="currentColor"
+        stroke-width="1.7" stroke-linecap="round"><path d="${path}"/></svg>`;
+      leaf.control.zoom({
+        position: 'topright',
+        zoomInText: zoomIcon('M5 10h10M10 5v10'),
+        zoomOutText: zoomIcon('M5 10h10'),
+      }).addTo(map);
 
       const FitControl = leaf.Control.extend({
         options: { position: 'topright' },
@@ -162,12 +169,14 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
           const button = leaf.DomUtil.create('button', 'odisha-fit-button', container);
           button.type = 'button';
           button.disabled = true;
-          button.innerHTML = `<svg class="odisha-fit-icon" viewBox="0 0 20 20" width="18" height="18"
+          button.setAttribute('aria-label', 'Fit Odisha');
+          button.title = 'Fit Odisha';
+          button.innerHTML = `<svg viewBox="0 0 20 20" width="18" height="18"
             aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7"
             stroke-linecap="round" stroke-linejoin="round">
             <path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/>
             <circle cx="10" cy="10" r="2.1" fill="currentColor" stroke="none"/>
-          </svg><span>Fit Odisha</span>`;
+          </svg>`;
           fitButtonRef.current = button;
           leaf.DomEvent.disableClickPropagation(container);
           leaf.DomEvent.on(button, 'click', () => {

@@ -325,6 +325,17 @@ table.data-table {
   color: var(--accent) !important;
 }
 
+.map-frame .leaflet-container .leaflet-control-zoom a {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  color: var(--accent) !important;
+}
+
+.map-frame .leaflet-container .leaflet-control-zoom .leaflet-disabled {
+  color: var(--text-muted) !important;
+}
+
 .leaflet-top .odisha-fit-control {
   margin-top: 6px;
 }
@@ -333,24 +344,16 @@ table.data-table {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  min-height: 44px;
-  padding: 0 10px;
+  box-sizing: border-box;
+  width: 44px;
+  height: 44px;
+  padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--bg-elev);
-  color: var(--text);
-  box-shadow: 0 2px 6px rgb(0 0 0 / 20%);
-  font: inherit;
-  font-weight: 600;
-  line-height: 1;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.odisha-fit-icon {
-  flex: none;
   color: var(--accent);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 20%);
+  cursor: pointer;
 }
 
 @media (hover: hover) {
@@ -360,7 +363,7 @@ table.data-table {
 }
 
 .odisha-fit-button:active {
-  color: var(--accent);
+  border-color: var(--accent);
 }
 
 .odisha-fit-button:focus-visible {
@@ -383,6 +386,15 @@ table.data-table {
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow);
   padding: 8px 12px;
+}
+
+@media (max-width: 640px) {
+  .map-legend {
+    top: 10px;
+    left: 10px;
+    bottom: auto;
+    padding: 6px 9px;
+  }
 }
 
 /* ---------- Theme toggle ---------- */
