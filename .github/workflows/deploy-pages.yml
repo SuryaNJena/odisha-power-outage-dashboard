@@ -1,0 +1,92 @@
+name: Deploy GitHub Pages
+
+# Publishes the static Next.js export to GitHub Pages. The site has no server:
+# every /api/* call goes to the laptop over the Cloudflare tunnel (CORS is `*`).
+#
+# Reusable (`workflow_call`) so the scheduled data refresh can redeploy after it
+# commits a new public/outage_data.json fallback snapshot.
+
+on:
+  push:
+    branches: [master]
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to build (defaults to the triggering commit)
+        type: string
+        required: false
+        default: ''
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # An empty ref falls back to the triggering commit.
+          ref: ${{ inputs.ref }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build static export for Pages
+        env:
+          NEXT_PUBLIC_USE_BASE_PATH: 'true'
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+          # Laptop API origin baked into the bundle. Override with the repository
+          # variable ODISHA_API_BASE_URL if the tunnel hostname changes.
+          NEXT_PUBLIC_BACKEND_URL: ${{ vars.ODISHA_API_BASE_URL || 'https://odishablackouts.356189.xyz' }}
+        run: npm run build
+
+      - name: Verify Pages wiring
+        env:
+          API_BASE_URL: ${{ vars.ODISHA_API_BASE_URL || 'https://odishablackouts.356189.xyz' }}
+        run: |
+          set -euo pipefail
+          base="/${{ github.event.repository.name }}"
+          test -f out/index.html
+          test -f out/.nojekyll
+          # Assets and links must carry the project basePath or Pages 404s them.
+          grep -q "${base}/_next/" out/index.html
+          test -f out/live/index.html
+          test -f out/reliability/index.html
+          # The API origin must be the laptop tunnel, never the Pages origin.
+          grep -rq "$API_BASE_URL" out/_next/static
+          if grep -rq 'localhost:3001' out/_next; then
+            echo "ERROR: localhost:3001 baked into the export" >&2
+            exit 1
+          fi
+          echo "OK: basePath=${base} api=${API_BASE_URL}"
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

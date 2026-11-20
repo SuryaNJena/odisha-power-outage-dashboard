@@ -7,6 +7,9 @@ const nextConfig = {
   output: 'export',          // static export for GitHub Pages
   basePath,
   assetPrefix: basePath,
+  // GitHub Pages serves directory indexes, not /live.html. Only the Pages build
+  // gets trailing slashes; the self-hosted Go server keeps /live.html.
+  trailingSlash: isDeploy,
   images: {
     unoptimized: true,       // required for static export
   },

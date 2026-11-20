@@ -1,0 +1,71 @@
+name: Refresh outage data
+
+# Scrapes the official outage feed and commits the processed snapshot to
+# public/outage_data.json, which is the fallback dataset the static GitHub Pages
+# site serves when the laptop API is unreachable.
+#
+# Scheduled runs are opt-in: set the repository variable ODISHA_SCHEDULES=on.
+# The deploy is delegated to the reusable "Deploy GitHub Pages" workflow because
+# commits pushed with GITHUB_TOKEN do not trigger `push` workflows.
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.event_name == 'workflow_dispatch' || vars.ODISHA_SCHEDULES == 'on'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.commit.outputs.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scraper (fetch latest outage data)
+        run: python scrap.py
+        # scrap.py writes CSVs to scrappedData/
+
+      - name: Process CSVs → public/outage_data.json
+        run: python process.py
+
+      - name: Commit refreshed snapshot
+        id: commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # scrappedData/ is gitignored; only the processed JSON is tracked.
+          git add public/outage_data.json
+          if git diff --cached --quiet; then
+            echo "No data change; nothing to commit."
+          else
+            git commit -m "chore: update outage data"
+            git push
+          fi
+          # Build the deploy from the commit that now contains this snapshot.
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: refresh
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/deploy-pages.yml
+    with:
+      ref: ${{ needs.refresh.outputs.sha }}

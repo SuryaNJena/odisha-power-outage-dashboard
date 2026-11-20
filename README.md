@@ -71,6 +71,40 @@ curl -s localhost:3001/api/health | jq
 scrape, runs `dbt seed/run/test`, publishes the map mart JSON and sends the first
 batch to Kafka. It is idempotent.
 
+### GitHub Pages (static frontend, live data from the laptop)
+
+The public site is a static Next.js export on GitHub Pages. It has no server of
+its own — every `/api/*` request goes to the laptop through the Cloudflare
+tunnel, which answers with `Access-Control-Allow-Origin: *`.
+
+- Site: <https://suryanjena.github.io/odisha-power-outage-dashboard/>
+- API: `https://odishablackouts.356189.xyz` → tunnel → `localhost:3001` on the laptop
+
+`deploy-pages.yml` builds the export on every push to `master`, and
+`refresh-data.yml` calls it after committing a new fallback snapshot. Build-time
+wiring:
+
+| Variable | Value | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_USE_BASE_PATH` | `true` | enables the project basePath |
+| `NEXT_PUBLIC_BASE_PATH` | `/<repo>` | prefixes assets, links and the manifest |
+| `NEXT_PUBLIC_BACKEND_URL` | tunnel origin | absolute API origin baked into the bundle |
+
+The tunnel hostname is read from the repository variable `ODISHA_API_BASE_URL`
+(Settings → Secrets and variables → Actions → Variables) and falls back to the
+value above, so rotating the tunnel needs no code change.
+
+`trailingSlash` is enabled for the Pages build only, so deep links (`/live/`,
+`/reliability/`) resolve on Pages; the self-hosted build keeps `live.html`.
+
+One-time setup: **Settings → Pages → Source: GitHub Actions**. A branch-based
+source makes `actions/deploy-pages` fail with `Get Pages site failed`.
+
+When the laptop is offline the map falls back to the committed
+`public/outage_data.json` snapshot, and the Live/Reliability pages show their
+"not available yet" states. The tunnel is the only public ingress, so nothing
+else on the laptop is exposed.
+
 ## Airflow DAGs (full mode, schedules opt-in)
 
 | DAG | Schedule (IST) | Purpose |
@@ -132,7 +166,7 @@ npm run dev                # Next dev server on :3000 (hot reload)
 ```
 
 The legacy pipeline (`scrap.py` → `process.py` → SQLite/JSON) is still used by the
-GitHub Pages workflow and as the offline fallback; the self-hosted stack uses PostgreSQL and dbt. Airflow is optional.
+scheduled `refresh-data` workflow to keep the offline fallback current; the self-hosted stack uses PostgreSQL and dbt. Airflow is optional.
 
 ## Data refresh behaviour
 
