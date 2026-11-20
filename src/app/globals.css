@@ -308,8 +308,7 @@ table.data-table {
   overflow: hidden;
 }
 
-.leaflet-bar a,
-.leaflet-control-fit {
+.leaflet-bar a {
   background: var(--bg-elev) !important;
   color: var(--text) !important;
   border-bottom: 1px solid var(--border) !important;
@@ -321,22 +320,57 @@ table.data-table {
   border-bottom: none !important;
 }
 
-.leaflet-bar a:hover,
-.leaflet-control-fit:hover {
+.leaflet-bar a:hover {
   background: var(--bg-card) !important;
   color: var(--accent) !important;
 }
 
-.leaflet-control-fit {
-  width: 26px;
-  height: 26px;
+.leaflet-top .odisha-fit-control {
+  margin-top: 6px;
+}
+
+.odisha-fit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 44px;
+  padding: 0 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
-  cursor: pointer;
-  font-size: 15px;
-  font-weight: 700;
+  background: var(--bg-elev);
+  color: var(--text);
+  box-shadow: 0 2px 6px rgb(0 0 0 / 20%);
+  font: inherit;
+  font-weight: 600;
   line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.odisha-fit-icon {
+  flex: none;
+  color: var(--accent);
+}
+
+@media (hover: hover) {
+  .odisha-fit-button:not(:disabled):hover {
+    border-color: var(--accent);
+  }
+}
+
+.odisha-fit-button:active {
+  color: var(--accent);
+}
+
+.odisha-fit-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.odisha-fit-button:disabled {
+  opacity: 0.65;
+  cursor: default;
 }
 
 .map-legend {

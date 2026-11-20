@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import { MAP_URL } from '../config';
 import { useTheme } from '../theme';
 
+const FIT_OPTIONS = { padding: [12, 12], maxZoom: 9 };
 const MAX_DOTS = 600; // hard cap: beyond this, aggregate dots by substation
 
 // Heat scale: green (few) → yellow → orange → red (many).
@@ -107,6 +108,7 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
   const districtLayerRef = useRef(null);
   const dotLayerRef = useRef(null);
   const resizeObserverRef = useRef(null);
+  const fitButtonRef = useRef(null);
   const hasFittedRef = useRef(false);
   const [topo, setTopo] = useState(null);
   const [ready, setReady] = useState(false);
@@ -153,21 +155,28 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
 
       leaf.control.zoom({ position: 'topright' }).addTo(map);
 
-      // Custom "zoom to fit" button (parity with the old reset-view button).
       const FitControl = leaf.Control.extend({
         options: { position: 'topright' },
         onAdd() {
-          const btn = leaf.DomUtil.create('button', 'leaflet-control-fit');
-          btn.type = 'button';
-          btn.title = 'Zoom to fit (reset view)';
-          btn.setAttribute('aria-label', 'Zoom to fit');
-          btn.innerHTML = '⤢';
-          leaf.DomEvent.disableClickPropagation(btn);
-          leaf.DomEvent.on(btn, 'click', () => {
-            const layer = districtLayerRef.current;
-            if (layer && map) map.fitBounds(layer.getBounds(), { padding: [12, 12] });
+          const container = leaf.DomUtil.create('div', 'odisha-fit-control');
+          const button = leaf.DomUtil.create('button', 'odisha-fit-button', container);
+          button.type = 'button';
+          button.disabled = true;
+          button.innerHTML = `<svg class="odisha-fit-icon" viewBox="0 0 20 20" width="18" height="18"
+            aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.7"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/>
+            <circle cx="10" cy="10" r="2.1" fill="currentColor" stroke="none"/>
+          </svg><span>Fit Odisha</span>`;
+          fitButtonRef.current = button;
+          leaf.DomEvent.disableClickPropagation(container);
+          leaf.DomEvent.on(button, 'click', () => {
+            const bounds = districtLayerRef.current?.getBounds();
+            if (!bounds?.isValid()) return;
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            map.fitBounds(bounds, { ...FIT_OPTIONS, ...(reduceMotion && { animate: false }) });
           });
-          return btn;
+          return container;
         },
       });
       new FitControl().addTo(map);
@@ -277,12 +286,14 @@ function OdishaMap({ dots = [], districts = [], showDots = true, showHeatmap = t
       },
     });
 
-    if (!hasFittedRef.current) {
+    const bounds = layer.getBounds();
+    if (!hasFittedRef.current && bounds.isValid()) {
       hasFittedRef.current = true;
-      map.fitBounds(layer.getBounds(), { padding: [12, 12], maxZoom: 9 });
+      map.fitBounds(bounds, { ...FIT_OPTIONS, animate: false });
     }
     if (showHeatmap) layer.addTo(map);
     districtLayerRef.current = layer;
+    if (fitButtonRef.current) fitButtonRef.current.disabled = !bounds.isValid();
   }, [ready, topo, dark, districts]);
 
   // Toggle the district heat layer visibility. Dots live in a higher pane, so they
