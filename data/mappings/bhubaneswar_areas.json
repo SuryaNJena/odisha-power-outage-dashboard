@@ -1,0 +1,6 @@
+[
+  {"area":"Satya Nagar","district":"Khordha","lat":20.27526,"lon":85.85318,"source":"https://www.openstreetmap.org/node/6985772969","officialStations":["Satyanagar"]},
+  {"area":"Unit-3","district":"Khordha","lat":20.27461,"lon":85.83931,"source":"https://www.openstreetmap.org/node/4613711498","aliases":["Unit III","Kharavela Nagar","Kharvela Nagar"],"officialStations":["Unit-3"]},
+  {"area":"Laxmisagar","district":"Khordha","lat":20.26850,"lon":85.84850,"source":"https://www.wikidata.org/wiki/Q6505292","aliases":["Lakshmi Sagar"],"officialStations":["Laxmisagar"]},
+  {"area":"Delta Square","district":"Khordha","lat":20.27354,"lon":85.80946,"source":"https://www.findlatitudeandlongitude.com/l/Delta+Square%2C+Bhubaneswar/445418/gps-coordinates-converter/","officialStations":["Delta"]}
+]

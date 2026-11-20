@@ -431,36 +431,55 @@ func (s *Store) riskFromML(ctx context.Context) (*RiskResponse, error) {
 func (s *Store) MapReports(ctx context.Context) ([]MapReport, error) {
 	rows, err := s.db.QueryContext(ctx, `
         WITH recent AS (
-            SELECT district, regexp_replace(lower(district), '[^a-z0-9]+', '', 'g') AS district_key,
+            SELECT district, coalesce(area, '') AS area, regexp_replace(lower(district), '[^a-z0-9]+', '', 'g') AS district_key,
                    count(*) AS reports, max(reported_at) AS latest_at
             FROM raw.user_reports
             WHERE reported_at >= now() - interval '24 hours'
               AND (source = 'web-outage' OR (
                   source = 'web' AND coalesce(trim(gss), '') = '' AND coalesce(trim(feeder), '') = ''
               ))
-            GROUP BY district
+            GROUP BY district, area
         )
-        SELECT c.district, c.lat, c.lon, sum(r.reports)::bigint, max(r.latest_at)
+        SELECT c.district, c.lat, c.lon, r.area, r.reports, r.latest_at
         FROM recent r
         LEFT JOIN raw.district_aliases a ON a.alias = r.district_key
         JOIN raw.district_centroids c
           ON c.district = a.district OR (a.district IS NULL AND lower(c.district) = lower(r.district))
         WHERE c.lat IS NOT NULL AND c.lon IS NOT NULL
-        GROUP BY c.district, c.lat, c.lon
         ORDER BY c.district`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	reports := make([]MapReport, 0)
+	grouped := make(map[[2]string]MapReport)
 	for rows.Next() {
 		var report MapReport
-		if err := rows.Scan(&report.District, &report.Lat, &report.Lon, &report.Count, &report.LatestAt); err != nil {
+		var inputArea string
+		if err := rows.Scan(&report.District, &report.Lat, &report.Lon, &inputArea, &report.Count, &report.LatestAt); err != nil {
 			return nil, err
 		}
+		if place, ok := reportAreas.resolve(report.District, inputArea); ok {
+			report.Area, report.Lat, report.Lon = place.Area, place.Lat, place.Lon
+		}
+		key := [2]string{report.District, report.Area}
+		previous := grouped[key]
+		report.Count += previous.Count
+		if previous.LatestAt.After(report.LatestAt) {
+			report.LatestAt = previous.LatestAt
+		}
+		grouped[key] = report
+	}
+	reports := make([]MapReport, 0, len(grouped))
+	for _, report := range grouped {
 		reports = append(reports, report)
 	}
+	sort.Slice(reports, func(i, j int) bool {
+		if reports[i].District != reports[j].District {
+			return reports[i].District < reports[j].District
+		}
+		return reports[i].Area < reports[j].Area
+	})
 	return reports, rows.Err()
 }
 

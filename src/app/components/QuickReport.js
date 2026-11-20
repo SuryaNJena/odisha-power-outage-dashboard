@@ -110,8 +110,14 @@ export default function QuickReport({ districts = FALLBACK_DISTRICTS, onSaved })
         }),
       });
       if (!res.ok) throw new Error(`API responded ${res.status}`);
-      const { stored } = await res.json();
-      notify('ok', stored ? 'Your outage report was saved.' : 'Your outage report was queued.');
+      const { stored, mapArea } = await res.json();
+      if (stored) {
+        notify('ok', mapArea
+          ? `Report saved. Map shows the approximate area near ${mapArea}.`
+          : 'Report saved. Map shows the district location.');
+      } else {
+        notify('ok', 'Your outage report was queued.');
+      }
       if (stored) onSaved?.();
       setComment('');
       setArea('');

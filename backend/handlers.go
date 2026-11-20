@@ -152,6 +152,7 @@ func (s *AppState) handleMapData(w http.ResponseWriter, r *http.Request) {
 			m, err := st.MapData(ctx)
 			cancel()
 			if err == nil {
+				applyOfficialAreaFallbacks(m)
 				if body, mErr := json.Marshal(m); mErr == nil {
 					s.setCache("mapdata", body)
 					w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -174,6 +175,7 @@ func (s *AppState) handleMapData(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	applyOfficialAreaFallbacks(m)
 	if body, mErr := json.Marshal(m); mErr == nil {
 		s.setCache("mapdata", body)
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -521,6 +523,14 @@ func (s *AppState) handleReport(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
+	var mapArea string
+	if in.Kind == "outage" {
+		if place, ok := reportAreas.resolve(in.District, in.Area); ok {
+			in.Area = place.Area
+			mapArea = place.Area
+		}
+	}
+
 	reportID := newReportID()
 	queued := false
 	if s.producer != nil && in.Kind != "correction" {
@@ -552,6 +562,7 @@ func (s *AppState) handleReport(w http.ResponseWriter, r *http.Request) {
 		"reportId": reportID,
 		"queued":   queued,
 		"stored":   stored,
+		"mapArea":  mapArea,
 	})
 }
 

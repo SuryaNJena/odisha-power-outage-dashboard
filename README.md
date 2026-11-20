@@ -121,7 +121,7 @@ else on the laptop is exposed.
 | Endpoint | Description |
 |---|---|
 | `GET /api/mapdata` | map dots + district heat for the latest published snapshot in laptop mode; PostgreSQL with file fallback in full mode |
-| `GET /api/map-reports` | recent community outage counts and latest report timestamps at district centroids |
+| `GET /api/map-reports` | recent community outage counts and latest report timestamps at locality or district reference points |
 | `GET /api/realtime` | NRT report totals, per-district reports/unconfirmed/risk, alerts, trend, pipeline health |
 | `GET /api/reliability?days=7\|30\|90` | SAIDI / SAIFI / CAIDI / ASAI by district |
 | `GET /api/risk` | weather-driven risk forecast (Spark ML first, dbt marts fallback) |

@@ -95,7 +95,9 @@ function dotTooltip(d) {
   const sub = `${escapeHtml(d.district || '—')} • ${escapeHtml(d.feeder || d.division || '—')}`;
   const extra = d.reason ? `<div class="tt-sub" style="margin-top:3px">${escapeHtml(d.reason)}</div>` : '';
   const timings = `<div class="tt-sub" style="margin-top:3px">Start: ${escapeHtml(d.start || 'Not available')}<br>Expected restoration: ${escapeHtml(d.end || 'Not available')}</div>`;
-  return `<div class="tt-title">${title}</div><div class="tt-sub">${sub}</div>${timings}${extra}`;
+  const location = d.locationArea ? `Approximate area: ${d.locationArea}`
+    : d.geocoded ? 'Mapped near the named substation' : 'Approximate district location';
+  return `<div class="tt-title">${title}</div><div class="tt-sub">${sub}</div>${timings}${extra}<div class="tt-sub">${escapeHtml(location)}</div>`;
 }
 
 /**
@@ -371,7 +373,7 @@ function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHe
     const fillColor = cssVar('--community-report-dot');
     const borderColor = cssVar('--bg-elev');
     for (const report of reports) {
-      const { district, lat, lon, count, latestAt } = report;
+      const { district, area, lat, lon, count, latestAt } = report;
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
       const latest = REPORT_TIME.format(new Date(latestAt));
       leaf.circleMarker([lat, lon], {
@@ -383,10 +385,10 @@ function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHe
         pane: 'odishaReports',
         className: 'community-report-marker',
       }).bindTooltip(
-        `<div class="tt-title">${escapeHtml(district)}</div>
+        `<div class="tt-title">${escapeHtml(area ? area + ' · ' + district : district)}</div>
          <div class="tt-sub">${count} unverified community report${count === 1 ? '' : 's'} (last 24h)</div>
          <div class="tt-sub">Latest report: ${escapeHtml(latest)} IST</div>
-         <div class="tt-sub">Approximate district location</div>`,
+         <div class="tt-sub">${area ? 'Approximate area location' : 'Approximate district location'}</div>`,
         { direction: 'auto', className: 'odisha-tooltip' }
       ).addTo(group);
     }

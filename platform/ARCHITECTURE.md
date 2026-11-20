@@ -39,21 +39,27 @@ timestamp. Friends clicking together share the job. An interrupted or failed
 attempt retains the old map and consumes the cooldown. Page loads and status
 reads never start a job. The browser polls only while checking a requested job.
 
-The report form can suggest an area from the browser's current location using
-the existing Odisha boundary file. Typed searches use local boundaries and
-place names. The report stores the chosen area label in `raw.user_reports.area`.
-The form keeps GPS coordinates in the browser. Public markers still use
-district centroids.
+The report form uses the Odisha boundary file for GPS lookup. Device
+coordinates stay in the browser. The report API resolves a chosen or typed
+locality within the selected district and stores its standard name when known.
+Unmatched area text remains in PostgreSQL as submitted.
 
-The map reads the last 24 hours of community outage reports directly from
-PostgreSQL in either mode. Go joins them to the existing district aliases and
-centroids and returns only district, location, count, and latest report time.
-A confirmed save reloads that layer immediately. Other open, visible maps
-check once per minute. Purple markers indicate an unverified report at an
-approximate district location. They are independent of the official timeline,
-heatmap, and snapshot refresh. New corrections carry the `web-correction`
-source. Older `web` submissions with station or feeder details are treated as
-corrections for this view.
+The public map reads the last 24 hours of community reports directly from
+PostgreSQL in either mode. It groups known localities and subdistricts at their
+reference points and falls back to the district center for unmatched reports.
+Only reference labels, approximate coordinates, counts, and the latest report
+time are returned. A confirmed save reloads the layer and visible maps check
+once per minute. Purple dots mark unverified community reports. Corrections
+are excluded. Older station-targeted submissions are treated as corrections.
+
+The API also applies sourced Bhubaneswar locality references to selected
+official station names when the feed falls back to the district center. The
+tooltip identifies the location as approximate. These points do not certify
+the location of equipment or show the footprint of an outage.
+
+Regenerate the area reference with `node scripts/build-report-areas.mjs` after
+updating boundaries or mappings. Bhubaneswar reference points and links to
+their sources are in `data/mappings/bhubaneswar_areas.json`.
 
 ## Full mode (optional)
 

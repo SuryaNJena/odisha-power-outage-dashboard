@@ -2,6 +2,7 @@ import { geoArea, geoContains } from 'd3-geo';
 import { feature } from 'topojson-client';
 import { MAP_URL } from './config';
 import aliases from '../../data/mappings/district_aliases.json';
+import neighborhoods from '../../data/mappings/bhubaneswar_areas.json';
 
 const normalize = (value) => value.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 const districtNames = new Map(
@@ -25,12 +26,10 @@ function boundaries() {
     const { objects, ...topology } = await res.json();
     const districts = feature(topology, objects.OSMB_Odisha_Districts_Rewind).features
       .filter((district) => district.properties.name !== 'Odisha');
-    const districtById = new Map(districts.map((district) => [district.properties.osm_id, district.properties.name]));
     const areas = feature(topology, objects.OSMB_Odisha_Rewind).features
       .map((geometry) => ({
         geometry,
         area: areaName(geometry),
-        district: (geometry.properties.parents || []).map((id) => districtById.get(id)).find(Boolean),
         size: geoArea(geometry),
       }))
       .filter(({ area }) => area)
@@ -48,32 +47,33 @@ export async function areaAtLocation(latitude, longitude) {
   const point = [longitude, latitude];
   const district = districts.find((candidate) => geoContains(candidate, point))?.properties.name;
   if (!district) return null;
+  // A nearby sourced neighborhood point can be more useful than a city name.
+  const nearby = neighborhoods
+    .filter((place) => place.district === district)
+    .map((place) => ({ place, distance: Math.hypot(
+      (place.lon - longitude) * Math.cos(latitude * Math.PI / 180),
+      place.lat - latitude
+    ) }))
+    .sort((a, b) => a.distance - b.distance)[0];
+  if (nearby?.distance < 0.006) return { district, area: nearby.place.area };
   const nearestArea = areas.find(({ geometry }) => geoContains(geometry, point));
   return { district, area: nearestArea?.area || '' };
 }
 
 export async function findAreas(text, preferredDistrict) {
-  const [{ areas, districts }, { default: landmarks }] = await Promise.all([
-    boundaries(),
-    import('../../data/mappings/geocode_cache.json'),
-  ]);
+  const { default: catalog } = await import('../../backend/report_areas.json');
   const query = normalize(text);
   if (!query) return [];
-
   const places = [
-    ...areas.filter(({ district }) => district).map(({ area, district }) => ({ area, district })),
-    ...districts.map(({ properties: { name } }) => ({ area: name, district: name })),
-    ...Object.entries(landmarks).filter(([, point]) => Number.isFinite(point.lat)).map(([key]) => {
-      const [name, district] = key.split('|');
-      const area = name.replace(/\s*\(GSS\)$/i, '').toLowerCase().replace(/\b\p{L}/gu, (letter) => letter.toUpperCase());
-      return { area, district: canonical(district) };
-    }),
+    ...catalog.areas,
+    ...Object.keys(aliases.districts).map((district) => ({ area: district, district })),
   ];
 
   const scored = places.flatMap((place) => {
     const key = normalize(place.area);
     const aliasMatch = place.area === place.district && districtNames.get(query) === place.district;
-    const score = key === query || aliasMatch ? 0 : key.startsWith(query) ? 1 : key.includes(query) ? 2 : -1;
+    const namedAlias = place.aliases?.some((alias) => normalize(alias) === query);
+    const score = key === query || aliasMatch || namedAlias ? 0 : key.startsWith(query) ? 1 : key.includes(query) ? 2 : -1;
     return score < 0 ? [] : [{ ...place, score }];
   });
   scored.sort((a, b) => a.score - b.score ||

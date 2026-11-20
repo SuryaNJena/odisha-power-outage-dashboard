@@ -11,6 +11,7 @@ type DistrictData struct {
 }
 
 type Dot struct {
+	LocationArea      string   `json:"locationArea,omitempty"`
 	District          string   `json:"district"`
 	Circle            string   `json:"circle"`
 	Division          string   `json:"division"`
@@ -136,8 +137,9 @@ type RiskResponse struct {
 	Message   string         `json:"message,omitempty"`
 }
 
-// MapReport is a district-level aggregate for public display.
+// MapReport is a locality or district aggregate for public display.
 type MapReport struct {
+	Area     string    `json:"area,omitempty"`
 	District string    `json:"district"`
 	Lat      float64   `json:"lat"`
 	Lon      float64   `json:"lon"`
