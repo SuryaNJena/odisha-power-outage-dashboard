@@ -321,7 +321,7 @@ table.data-table {
 }
 
 .leaflet-bar a:hover {
-  background: var(--bg-card) !important;
+  background: color-mix(in srgb, var(--bg-elev) 88%, var(--accent)) !important;
   color: var(--accent) !important;
 }
 
@@ -378,8 +378,8 @@ table.data-table {
 
 .map-legend {
   position: absolute;
-  left: 16px;
-  bottom: 16px;
+  top: 10px;
+  left: 10px;
   z-index: 10;
   background: var(--bg-elev);
   border: 1px solid var(--border);
@@ -390,9 +390,6 @@ table.data-table {
 
 @media (max-width: 640px) {
   .map-legend {
-    top: 10px;
-    left: 10px;
-    bottom: auto;
     padding: 6px 9px;
   }
 }
