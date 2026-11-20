@@ -475,10 +475,10 @@ func (s *Store) InsertReport(ctx context.Context, r ReportInput, reportID string
 	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO raw.user_reports
 			(report_id, district, gss, feeder, comment, severity, reporter,
-			 lat, lon, reported_at, source)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),$10)
+			 lat, lon, reported_at, source, area)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now(),$10,NULLIF($11,''))
 		ON CONFLICT (report_id) DO NOTHING`,
-		reportID, r.District, r.GSS, r.Feeder, r.Comment, r.Severity, "web", r.Lat, r.Lon, source)
+		reportID, r.District, r.GSS, r.Feeder, r.Comment, r.Severity, "web", r.Lat, r.Lon, source, r.Area)
 	return err
 }
 

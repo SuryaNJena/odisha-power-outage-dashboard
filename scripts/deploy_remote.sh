@@ -62,6 +62,9 @@ cp -a data/mappings/. platform/app/data/mappings/
 cp -a data/mart/outages.json platform/app/data/mart/outages.json 2>/dev/null || true
 
 echo "==> [4/4] compose build + up"
+docker compose -f "$COMPOSE_FILE" up -d --wait postgres
+docker compose -f "$COMPOSE_FILE" exec -T postgres psql -X -v ON_ERROR_STOP=1 -U odisha -d odisha \
+  < platform/postgres/migrations/001_report_area.sql
 if ! docker compose -f "$COMPOSE_FILE" config --services | grep -qx airflow; then
   docker compose -f "$COMPOSE_FILE" build app
   bash "$ROOT/scripts/power-mode.sh" snapshot

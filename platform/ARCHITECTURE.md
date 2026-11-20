@@ -39,6 +39,12 @@ timestamp. Friends clicking together share the job. An interrupted or failed
 attempt retains the old map and consumes the cooldown. Page loads and status
 reads never start a job. The browser polls only while checking a requested job.
 
+The report form can suggest an area from the browser's current location using
+the existing Odisha boundary file. Typed searches use local boundaries and
+place names. The report stores the chosen area label in `raw.user_reports.area`.
+The form keeps GPS coordinates in the browser. Public markers still use
+district centroids.
+
 The map reads the last 24 hours of community outage reports directly from
 PostgreSQL in either mode. Go joins them to the existing district aliases and
 centroids and returns only district, location, count, and latest report time.

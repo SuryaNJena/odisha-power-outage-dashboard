@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS raw.user_reports (
     gss          text,
     feeder       text,
     comment      text,
+    area         text,
     severity     integer NOT NULL DEFAULT 3,
     reporter     text,
     lat          double precision,

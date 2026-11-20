@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 type cacheItem struct {
@@ -501,6 +502,11 @@ func (s *AppState) handleReport(w http.ResponseWriter, r *http.Request) {
 	in.GSS = strings.TrimSpace(in.GSS)
 	in.Feeder = strings.TrimSpace(in.Feeder)
 	in.Comment = strings.TrimSpace(in.Comment)
+	in.Area = strings.TrimSpace(in.Area)
+	if utf8.RuneCountInString(in.Area) > 120 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "area must be at most 120 characters"})
+		return
+	}
 	if in.District == "" || len(in.District) > 80 {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "district is required"})
 		return

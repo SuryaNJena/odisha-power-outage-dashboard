@@ -146,6 +146,7 @@ type MapReport struct {
 }
 
 type ReportInput struct {
+	Area     string   `json:"area"`
 	Kind     string   `json:"kind"`
 	District string   `json:"district"`
 	GSS      string   `json:"gss"`

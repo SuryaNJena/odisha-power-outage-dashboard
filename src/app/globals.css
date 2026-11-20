@@ -1104,6 +1104,26 @@ a {
   gap: 10px;
 }
 
+.report-location-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 4px;
+}
+
+.report-area-matches {
+  display: grid;
+  gap: 4px;
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.report-area-matches button {
+  white-space: normal;
+  text-align: left;
+}
+
 .form-label {
   display: block;
   margin-bottom: 4px;
