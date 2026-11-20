@@ -12,7 +12,9 @@ if curl -fsS --max-time 5 localhost:3001/api/health | grep -q '"mode":"snapshot"
   section "manual snapshot"
   curl -fsS --max-time 15 localhost:3001/api/mapdata |
     python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["source"]=="snapshot" and d["updatedAt"] and d["total"]==len(d["dots"]); print("Outages:",d["total"],"Updated:",d["updatedAt"])' || exit 1
-  curl -fsS localhost:3001/api/features | python3 -c 'import json,sys; assert json.load(sys.stdin)["analytics"] is False' || exit 1
+  curl -fsS localhost:3001/api/features | python3 -c 'import json,sys; f=json.load(sys.stdin); assert not f["analytics"] and f["reporting"] and f["manualRefresh"]' || exit 1
+  curl -fsS localhost:3001/api/refresh | python3 -c 'import json,sys; assert "nextAllowedAt" in json.load(sys.stdin)' || exit 1
+  docker compose exec -T postgres pg_isready -U odisha -d odisha || exit 1
   echo "VERIFY: OK (snapshot mode)"
   exit 0
 fi

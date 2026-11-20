@@ -37,9 +37,6 @@ func (s *AppState) setCache(key string, body []byte) {
 }
 
 func (s *AppState) ensureStore() *Store {
-	if s.cfg.SnapshotOnly {
-		return nil
-	}
 	s.dbMu.Lock()
 	defer s.dbMu.Unlock()
 	if s.store != nil {
@@ -141,32 +138,34 @@ func (s *AppState) handleMapData(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
 		return
 	}
-	if body := s.cached("mapdata", 20*time.Second); body != nil {
+	if body := s.cached("mapdata", 20*time.Second); body != nil && !s.cfg.SnapshotOnly {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
 		return
 	}
 
-	if st := s.ensureStore(); st != nil {
-		ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
-		m, err := st.MapData(ctx)
-		cancel()
-		if err == nil {
-			if body, mErr := json.Marshal(m); mErr == nil {
-				s.setCache("mapdata", body)
-				w.Header().Set("Content-Type", "application/json; charset=utf-8")
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write(body)
-				return
+	if !s.cfg.SnapshotOnly {
+		if st := s.ensureStore(); st != nil {
+			ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+			m, err := st.MapData(ctx)
+			cancel()
+			if err == nil {
+				if body, mErr := json.Marshal(m); mErr == nil {
+					s.setCache("mapdata", body)
+					w.Header().Set("Content-Type", "application/json; charset=utf-8")
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write(body)
+					return
+				}
+			}
+			log.Printf("mapdata from postgres failed: %v", err)
+			if isConnErr(err) {
+				s.dropStore()
 			}
 		}
-		log.Printf("mapdata from postgres failed: %v", err)
-		if isConnErr(err) {
-			s.dropStore()
-		}
-	}
 
+	}
 	m, err := s.loadSnapshot()
 	if err != nil {
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{
@@ -660,4 +659,29 @@ func (s *AppState) handleHealth(w http.ResponseWriter, r *http.Request) {
 		UptimeSec:  int64(time.Since(s.started).Seconds()),
 		Components: components,
 	})
+}
+
+// GET observes a refresh; only an explicit POST can start one. The private
+// worker owns the Postgres lock and continues if a browser disconnects.
+func (s *AppState) handleSnapshotRefresh(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
+		writeJSON(w, 405, map[string]string{"error": "method not allowed"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 7*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, r.Method, "http://refresh:8091/refresh", nil)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": "refresh request failed"})
+		return
+	}
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		writeJSON(w, 503, map[string]string{"error": "refresh service unavailable"})
+		return
+	}
+	defer res.Body.Close()
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(res.StatusCode)
+	_, _ = io.Copy(w, io.LimitReader(res.Body, 4096))
 }

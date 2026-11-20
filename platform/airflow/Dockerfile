@@ -99,7 +99,8 @@ RUN python -m pip install --no-cache-dir -r /tmp/requirements.txt \
 COPY platform/airflow/dags/ /opt/airflow/dags/
 COPY platform/airflow/scripts/ /opt/airflow/scripts/
 COPY scrap.py /opt/odisha/scrap.py
-COPY process.py /opt/odisha/process.py
+COPY process.py outage_rows.py /opt/odisha/
+COPY outage_rows.py /opt/airflow/scripts/
 COPY data/mappings/ /opt/airflow/mappings/
 
 # Writable runtime locations.  The shared named volume mount /opt/odisha/data

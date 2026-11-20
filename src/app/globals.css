@@ -1213,3 +1213,9 @@ a {
   }
 }
 
+
+
+.map-updated { display: flex; align-items: center; gap: 5px 8px; flex-wrap: wrap; }
+.refresh-feedback { flex-basis: 100%; max-width: 33ch; }
+.landing-report { margin: 0 0 12px; }
+.landing-report summary { cursor: pointer; color: var(--accent); width: fit-content; }

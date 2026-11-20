@@ -1,12 +1,35 @@
 name: odisha
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: odisha-postgres
+    environment:
+      POSTGRES_DB: odisha
+      POSTGRES_USER: odisha
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      TZ: Asia/Kolkata
+    volumes:
+      - odisha_pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U odisha -d odisha"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    mem_limit: 640m
+    restart: unless-stopped
+
   app:
+    depends_on:
+      postgres: {condition: service_healthy}
+      refresh: {condition: service_started}
     build: ./app
     image: odisha-app:2.0.0
     container_name: odisha-app
     ports:
       - "127.0.0.1:3001:3001"
     environment:
+      DATABASE_URL: postgresql://odisha:${POSTGRES_PASSWORD}@postgres:5432/odisha?sslmode=disable
       ODISHA_MODE: snapshot
       DATA_DIR: /opt/odisha-data
       WEB_DIR: /app/out
@@ -28,16 +51,27 @@ services:
     restart: unless-stopped
 
   refresh:
-    profiles: [manual]
+    container_name: odisha-refresh
+    depends_on:
+      postgres: {condition: service_healthy}
     # Reuse the Python dependencies already installed on this host.
     image: odisha-airflow:2.10.5
     build:
       context: ..
       dockerfile: platform/airflow/Dockerfile
-    entrypoint: ["python", "/repo/scripts/refresh_snapshot.py"]
+    entrypoint: ["python", "/repo/scripts/snapshot_worker.py"]
     working_dir: /repo
     user: "0:0"
     environment:
+      DATABASE_URL: postgresql://odisha:${POSTGRES_PASSWORD}@postgres:5432/odisha?sslmode=disable
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: postgres
+      POSTGRES_USER: odisha
+      REPO_DIR: /repo
+      DATA_DIR: /snapshot
+      DBT_TARGET_PATH: /tmp/dbt-target
+      DBT_LOG_PATH: /tmp/dbt-logs
+      DBT_SEND_ANONYMOUS_USAGE_STATS: "false"
       PYTHONDONTWRITEBYTECODE: "1"
       OPENBLAS_NUM_THREADS: "1"
       OMP_NUM_THREADS: "1"
@@ -49,9 +83,13 @@ services:
       - /tmp:size=48m
     cpus: 0.5
     mem_limit: 384m
-    restart: "no"
+    restart: unless-stopped
+    logging:
+      driver: local
+      options: {max-size: "1m", max-file: "2"}
 
 volumes:
+  odisha_pgdata:
   odisha_app_data:
 
 networks:

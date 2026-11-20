@@ -1,5 +1,11 @@
 # Odisha Outage Platform — Build Contract
 
+Runtime scope: the platform schemas and streaming contracts below describe full
+mode. Laptop mode uses the same PostgreSQL reports and official feed tables,
+plus `ops.map_refresh(id, attempted, status)` for global refresh admission.
+See [the runtime diagrams](ARCHITECTURE.md) for active services in each mode.
+
+
 This file is the single source of truth for parallel work on the data platform.
 Read it fully before writing code. Do not deviate from names, schemas, ports, or
 paths defined here; integration depends on them.

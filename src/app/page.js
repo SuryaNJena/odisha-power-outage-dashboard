@@ -2,6 +2,9 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { useFeatures } from './platformMode';
+import QuickReport from './components/QuickReport';
+import RefreshButton from './components/RefreshButton';
 import Navigation from './navigation';
 import Dashboard from './components/Dashboard';
 import DateTimeKnob from './components/DateTimeKnob';
@@ -68,6 +71,7 @@ const OdishaMap = dynamic(() => import('./components/OdishaMap'), {
 });
 
 export default function HomePage() {
+  const features = useFeatures();
   const [data, setData] = useState({ districts: [], dots: [], total: 0, updatedAt: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -224,7 +228,10 @@ export default function HomePage() {
               <label><input type="checkbox" checked={showDots} onChange={e => setShowDots(e.target.checked)} />Locations</label>
               <label><input type="checkbox" checked={showHeatmap} onChange={e => setShowHeatmap(e.target.checked)} />District heat</label>
             </div>
-            <span className="map-updated">Updated {loading ? '…' : lastUpdated}</span>
+            <div className="map-updated">
+              <span>Updated {loading ? '…' : lastUpdated}</span>
+              {features?.manualRefresh && <RefreshButton onData={setData} />}
+            </div>
           </div>
           <OdishaMap dots={visibleDots} districts={districtCounts} showDots={showDots} showHeatmap={showHeatmap} />
         </section>
@@ -244,6 +251,10 @@ export default function HomePage() {
           <h2 style={{ fontSize: 19, fontWeight: 700, marginBottom: 14, color: 'var(--text)' }}>
             Outage details
           </h2>
+          {features?.reporting && <details className="landing-report">
+            <summary>Report an outage</summary>
+            <QuickReport />
+          </details>}
           <Dashboard dots={visibleDots} />
         </div>
       </div>

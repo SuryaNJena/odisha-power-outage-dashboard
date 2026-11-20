@@ -1,24 +1,27 @@
-"""Run via the manual Compose service. Only the final JSON is persisted."""
+"""Load an explicit refresh into PostgreSQL and publish the map read cache."""
 import csv
 import fcntl
 import json
 import os
-import sqlite3
+import subprocess
 import sys
 import tempfile
-from collections import Counter
-from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-import process
-import scrap
+sys.path.insert(0, str(ROOT / "platform/airflow/scripts"))
+sys.path.insert(0, str(ROOT / "platform/airflow/dags"))
+import odisha_common as oc
+import scrape_official
+import load_official
+import publish_mart
 
 
 def build(folder):
+    scraped = scrape_official.scrape(output_dir=folder)
     # A failed DISCOM request must never replace the map with a partial feed.
-    for i, discom in enumerate(scrap.DISCOMS, 1):
+    for i, discom in enumerate(oc.SCRAPE_DISCOMS, 1):
         files = sorted(folder.glob(f"url_{i}_table_*.csv"))
         if not files:
             raise ValueError(f"Missing feed for {discom}")
@@ -27,18 +30,18 @@ def build(folder):
                 header = next(csv.reader(f), [])
             if len(header) < 10 or header[1].strip().lower() not in {"name of circle", "division"}:
                 raise ValueError(f"Unexpected columns for {discom}")
-    with sqlite3.connect(":memory:") as db:
-        db.executescript(process.SCHEMA_SQL)
-        process.ingest_csvs(str(folder), db)
-        rows = process.load_raw_rows(db, None)
-        process.write_outages_table(db, rows, process.load_aliases(process.ALIASES_PATH),
-            json.loads(process.CENTROIDS_PATH.read_text()), process.load_geocode_cache(), cached_only=True)
-        dots = process.load_processed(db)
-    if not dots:
+    load_official.load(batch_id=scraped["batch_id"], csv_dir=folder)
+    # Reuse the existing staging views and rebuild only the map mart.
+    subprocess.run(oc.dbt_command("run", "--select", "map_dots", "--threads", "1"),
+                   shell=True, check=True)
+    centroids = publish_mart.load_centroids()
+    result = publish_mart.build_mart([
+        publish_mart.row_to_dot(row, centroids)
+        for row in publish_mart.fetch_map_dots()
+    ])
+    if not result["dots"]:
         raise ValueError("No usable outages; retaining the last snapshot")
-    counts = Counter(dot["district"] for dot in dots)
-    return {"updatedAt": datetime.now(timezone.utc).isoformat(), "total": len(dots),
-            "districts": [{"name": k, "value": v} for k, v in counts.most_common()], "dots": dots}
+    return result
 
 
 def main():
@@ -48,7 +51,6 @@ def main():
     with (target.parent / ".refresh.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         with tempfile.TemporaryDirectory() as temp:
-            scrap.scrape_all(temp)
             data = build(Path(temp))
         with tempfile.NamedTemporaryFile(mode="w", dir=target.parent, delete=False) as out:
             tmp = Path(out.name)

@@ -1,5 +1,8 @@
 # Feature map — what the platform adds and where the ideas come from
 
+Availability depends on the runtime. See the [architecture and switch matrix](ARCHITECTURE.md#what-stays-on). Laptop mode serves the map, on-demand dbt refresh, and PostgreSQL-backed reports. The streaming and analytics features below require full mode.
+
+
 The original dashboard showed planned outages from the DISCOM feed. The platform
 adds near-real-time crowd reports, reliability analytics and weather-driven risk.
 Several features are adapted from mature outage services outside India; the table

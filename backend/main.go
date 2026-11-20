@@ -156,10 +156,12 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/mapdata", state.cors(state.handleMapData))
 	mux.HandleFunc("/api/features", state.cors(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]bool{"analytics": !cfg.SnapshotOnly})
+		writeJSON(w, http.StatusOK, map[string]bool{"analytics": !cfg.SnapshotOnly, "reporting": true, "manualRefresh": cfg.SnapshotOnly})
 	}))
 	if cfg.SnapshotOnly {
-		for _, route := range []string{"/api/realtime", "/api/reliability", "/api/risk", "/api/refresh", "/api/report"} {
+		mux.HandleFunc("/api/refresh", state.cors(state.handleSnapshotRefresh))
+		mux.HandleFunc("/api/report", state.cors(state.handleReport))
+		for _, route := range []string{"/api/realtime", "/api/reliability", "/api/risk"} {
 			mux.HandleFunc(route, state.cors(func(w http.ResponseWriter, r *http.Request) {
 				writeJSON(w, http.StatusServiceUnavailable, map[string]any{"available": false, "mode": "snapshot", "error": "Disabled in manual snapshot mode"})
 			}))

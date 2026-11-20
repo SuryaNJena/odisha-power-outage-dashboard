@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 """Load scraped outage CSVs into ``raw.official_outages`` (Airflow ingest step).
 
-The parsing semantics are copied from the historical ``process.py`` at the
-repository root; when that file is importable its ``parse_raw_row`` / ``row_hash``
-functions are reused directly, so the row content and the sha1 ``row_hash`` are
-byte-for-byte identical to the legacy pipeline.  A verbatim fallback copy lives
-below for deployments where ``process.py`` is not mounted.
+The PostgreSQL loader and the standalone Pages exporter share outage_rows.py.
 
 Circle schema (``Name of Circle`` header present), column indices::
 
@@ -33,20 +29,19 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
-import importlib.util
 import json
 import sys
 from pathlib import Path
-from types import ModuleType
-from typing import Any, Callable, Iterator, Sequence
+from typing import Any, Iterator, Sequence
 
 _HERE = Path(__file__).resolve().parent
-for _candidate in (_HERE, _HERE.parent / "dags"):
+for _candidate in (_HERE, _HERE.parent / "dags", _HERE.parents[2]):
     if str(_candidate) not in sys.path:
         sys.path.insert(0, str(_candidate))
 
 import odisha_common as oc  # noqa: E402  (path bootstrap must run first)
+
+from outage_rows import parse_raw_row, row_hash  # noqa: E402
 
 INSERT_SQL = """
 INSERT INTO raw.official_outages
@@ -59,99 +54,11 @@ ON CONFLICT (batch_id, row_hash) DO NOTHING
 
 
 # ---------------------------------------------------------------------------
-# process.py reuse (preferred) with a verbatim fallback
-# ---------------------------------------------------------------------------
-
-def load_legacy_process() -> ModuleType | None:
-    """Import the repository's ``process.py`` if available (reuses its parsing)."""
-    candidates = [
-        oc.REPO_DIR / "process.py",
-        Path(__file__).resolve().parents[3] / "process.py",  # repo checkout layout
-        Path("/opt/odisha/process.py"),
-    ]
-    for candidate in candidates:
-        if not candidate.is_file():
-            continue
-        try:
-            spec = importlib.util.spec_from_file_location("odisha_legacy_process", candidate)
-            if spec is None or spec.loader is None:
-                continue
-            module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(module)
-            if hasattr(module, "parse_raw_row") and hasattr(module, "row_hash"):
-                return module
-        except Exception as exc:  # noqa: BLE001 - fall back to the embedded copy
-            oc.log(f"Could not import {candidate} ({exc!r}); using embedded parser")
-    return None
-
-
-def _fallback_parse_raw_row(row: list, is_circle_schema: bool) -> dict | None:
-    """Verbatim copy of ``process.parse_raw_row`` (kept in sync, see module doc)."""
-    if is_circle_schema:
-        return {
-            "schema_type": "circle",
-            "circle": row[1].strip().upper(),
-            "division": (row[2].strip() if len(row) > 2 else ""),
-            "subdivision": "",
-            "section": "",
-            "otype": "",
-            "gss": (row[3].strip() if len(row) > 3 else ""),
-            "voltage": (row[4].strip() if len(row) > 4 else ""),
-            "feeder": (row[5].strip() if len(row) > 5 else ""),
-            "start": (row[6].strip() if len(row) > 6 else ""),
-            "end": (row[7].strip() if len(row) > 7 else ""),
-            "reason": (row[8].strip() if len(row) > 8 else ""),
-            "areas": (row[9].strip() if len(row) > 9 else ""),
-            "remarks": (row[10].strip() if len(row) > 10 else ""),
-        }
-    # Emergency shutdown schema:
-    # Date, Division, Subdivision, Section, Type, Feeder, Cause, Areas, From, To, Remarks
-    date = row[0].strip()
-    start_t = row[8].strip() if len(row) > 8 else ""
-    end_t = row[9].strip() if len(row) > 9 else ""
-    otype = row[4].strip() if len(row) > 4 else ""
-    cause = row[6].strip() if len(row) > 6 else ""
-    reason = " - ".join(x for x in (otype, cause) if x)
-    return {
-        "schema_type": "division",
-        "circle": "EMERGENCY",
-        "division": row[1].strip(),
-        "subdivision": (row[2].strip() if len(row) > 2 else ""),
-        "section": (row[3].strip() if len(row) > 3 else ""),
-        "otype": otype,
-        "gss": (row[3].strip() if len(row) > 3 else ""),
-        "voltage": "",
-        "feeder": (row[5].strip() if len(row) > 5 else ""),
-        "start": f"{date} {start_t}".strip(),
-        "end": f"{date} {end_t}".strip(),
-        "reason": reason,
-        "areas": (row[7].strip() if len(row) > 7 else ""),
-        "remarks": (row[10].strip() if len(row) > 10 else ""),
-    }
-
-
-def _fallback_row_hash(*fields: Any) -> str:
-    """Verbatim copy of ``process.row_hash`` (sha1 over stripped pipe-joined fields)."""
-    raw = "|".join((field or "").strip() for field in fields)
-    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
-
-
-def parser_functions() -> tuple[Callable[..., dict | None], Callable[..., str], str]:
-    """Return ``(parse_raw_row, row_hash, source)`` preferring the legacy module."""
-    legacy = load_legacy_process()
-    if legacy is not None:
-        return legacy.parse_raw_row, legacy.row_hash, "process.py"
-    return _fallback_parse_raw_row, _fallback_row_hash, "embedded-fallback"
-
-
-# ---------------------------------------------------------------------------
 # CSV parsing
 # ---------------------------------------------------------------------------
 
 def iter_csv_records(
     csv_files: Sequence[Path],
-    parse_raw_row: Callable[..., dict | None],
-    row_hash: Callable[..., str],
 ) -> Iterator[dict[str, Any]]:
     """Yield normalised outage records from every CSV file.
 
@@ -267,12 +174,11 @@ def load(batch_id: str | None = None, csv_dir: str | Path | None = None) -> dict
     oc.log(f"Loading batch {batch_id} from {source_dir}")
     _ensure_batch_row(batch_id)
 
-    parse_raw_row, row_hash, parser_source = parser_functions()
     csv_files = sorted(source_dir.glob("*.csv"))
     summary: dict[str, Any] = {
         "batch_id": batch_id,
         "csv_dir": str(source_dir),
-        "parser": parser_source,
+        "parser": "outage_rows.py",
         "file_count": len(csv_files),
         "files": [path.name for path in csv_files],
         "parsed": 0,
@@ -288,7 +194,7 @@ def load(batch_id: str | None = None, csv_dir: str | Path | None = None) -> dict
         file_stats: dict[str, dict[str, int]] = {}
         with oc.db_connection() as conn:
             with conn.cursor() as cur:
-                for record in iter_csv_records(csv_files, parse_raw_row, row_hash):
+                for record in iter_csv_records(csv_files):
                     rec = record["record"]
                     cur.execute(
                         INSERT_SQL,

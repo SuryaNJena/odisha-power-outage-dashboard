@@ -4,25 +4,31 @@ Everything here runs on the self-hosted Debian server under
 `~/odisha-platform/platform` via `docker compose`. The public app is
 <https://odishablackouts.356189.xyz> (Cloudflare Tunnel → `127.0.0.1:3001`).
 
+[System diagrams and service switches](ARCHITECTURE.md)
+
 ## Laptop mode (default)
 
-Only the Go web service runs between refreshes. It reads the last published map
-from the existing data volume. Analytics pages, crowd reports and polling are
-disabled. Map filters, layers and the time ruler work offline from the pipelines.
-Use these commands from the project root on the server:
+The map serves a saved JSON read cache. PostgreSQL is the only transactional
+database. Reports go directly into `raw.user_reports`; saving one does not start
+Kafka or trigger an official-data refresh. Users can report any district from
+**Report an outage** under the map. Scheduled pipelines and live analytics stay off.
+
+The **Refresh** button requests at most one utility scrape per three-hour window,
+shared by all visitors. PostgreSQL serializes concurrent requests and remembers
+the last attempt in `ops.map_refresh` across restarts. During the cooldown the
+button loads the existing map. The page checks progress only while a requested
+refresh is running. A failed attempt keeps the previous map and its update time.
+
+The private refresh service sleeps between requests. A refresh loads the four
+DISCOM feeds into PostgreSQL, rebuilds just `marts.map_dots` using one dbt thread,
+and atomically publishes the JSON cache. CSVs and dbt scratch files are temporary.
+This mode reuses the deployed platform's initialized staging views and seeds.
 
 ```bash
-bash scripts/power-mode.sh snapshot  # switch an existing deployment and stop its optional services
-bash scripts/power-mode.sh refresh   # fetch the four DISCOM feeds once
+bash scripts/power-mode.sh snapshot  # keep the map, PostgreSQL and refresh helper
+bash scripts/power-mode.sh refresh   # optional CLI; identical cooldown to the button
 bash scripts/verify.sh
 ```
-
-Refresh runs a short-lived Python process with half a CPU and a 384 MiB RAM limit.
-It uses RAM for CSVs and SQLite, cached station coordinates or district centroids,
-and atomically replaces one JSON file. Incomplete feeds or zero usable records
-leave the previous map in place. The snapshot refresh does not populate warehouse
-history or calculate reliability, ETR or risk. The displayed update time is the
-age of the feed. Reload the page after refresh (API cache up to 20 seconds).
 
 For a broker-only demo run `bash scripts/power-mode.sh kafka-on`, then
 `bash scripts/power-mode.sh kafka-off`. Snapshot mode does not produce events.
@@ -36,8 +42,7 @@ For the original platform run `bash scripts/power-mode.sh full` (uses
 Return to snapshot with the first command above. The full platform uses the same
 database and checkpoint volumes. GitHub Actions has a separate repository
 variable, `ODISHA_SCHEDULES`; its scrape job defaults to manual dispatch only.
-On a fresh laptop without the Python worker image, Compose builds it on first
-manual refresh; the existing server reuses its installed image.
+On this server the refresh service reuses the installed Python image.
 
 ## Services in full mode
 
@@ -51,7 +56,7 @@ manual refresh; the existing server reuses its installed image.
 | `odisha-airflow` | Airflow 2.10.5 standalone (scheduler + webserver + triggerer) | `127.0.0.1:8080` |
 | `odisha-spark-stream` | Spark 3.5.4 Structured Streaming NRT sink | — |
 
-## Data flow
+## Full-mode data flow (schedules require opt-in)
 
 1. `odisha_official_ingest` (`*/30`) scrapes Kavach → `raw.official_outages`,
    runs `dbt seed/run/test`, writes `data/mart/outages.json`, publishes
@@ -77,7 +82,7 @@ bash ~/odisha-platform/scripts/verify.sh        # if the repo scripts were uploa
 curl -s localhost:3001/api/health
 curl -s localhost:3001/api/realtime | jq .pipeline
 curl -s localhost:8081/jobs/overview | jq '.jobs[] | {name,state}'
-docker compose logs -f airflow spark-stream flink-submit
+docker compose -f docker-compose.full.yml logs -f airflow spark-stream flink-submit
 ```
 
 ## Known operational notes (from the first deployment)

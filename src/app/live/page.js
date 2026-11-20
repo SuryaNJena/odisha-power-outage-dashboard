@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AnalyticsOnly } from '../platformMode';
 import Navigation from '../navigation';
 import TrendChart from '../components/TrendChart';
 import StatusPanel from '../components/StatusPanel';
-import { REALTIME_URL, REPORT_URL } from '../config';
+import QuickReport, { FALLBACK_DISTRICTS } from '../components/QuickReport';
+import { REALTIME_URL } from '../config';
 import { useApiData } from '../useApiData';
 import {
   formatClock,
@@ -21,30 +22,11 @@ import {
 } from '../format';
 
 const POLL_MS = 15000;
-const REPORT_URL_LABEL = REPORT_URL || '/api/report';
 
 const PIPELINE_ROWS = [
   { key: 'kafka', label: 'Kafka' },
   { key: 'flink', label: 'Flink' },
   { key: 'spark', label: 'Spark' },
-];
-
-// Fallback list of the 30 Odisha districts (contract seeds). Used by the quick
-// report form before /api/realtime supplies the live district list.
-const FALLBACK_DISTRICTS = [
-  'Angul', 'Balangir', 'Balasore', 'Bargarh', 'Bhadrak', 'Boudh', 'Cuttack',
-  'Deogarh', 'Dhenkanal', 'Gajapati', 'Ganjam', 'Jagatsinghpur', 'Jajpur',
-  'Jharsuguda', 'Kalahandi', 'Kandhamal', 'Kendrapara', 'Kendujhar', 'Khordha',
-  'Koraput', 'Malkangiri', 'Mayurbhanj', 'Nabarangpur', 'Nayagarh', 'Nuapada',
-  'Puri', 'Rayagada', 'Sambalpur', 'Subarnapur', 'Sundargarh',
-];
-
-const SEVERITY_OPTIONS = [
-  [1, '1 · Minor flicker'],
-  [2, '2 · Brief interruption'],
-  [3, '3 · Power out (default)'],
-  [4, '4 · Long outage'],
-  [5, '5 · Extended outage'],
 ];
 
 /**
@@ -108,132 +90,6 @@ function riskLevelFor(district) {
     return known;
   }
   return riskLevelFromScore(district.riskScore);
-}
-
-function QuickReport({ districts }) {
-  const [district, setDistrict] = useState('');
-  const [severity, setSeverity] = useState(3);
-  const [comment, setComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [toast, setToast] = useState(null);
-  const toastTimer = useRef(null);
-
-  useEffect(
-    () => () => {
-      if (toastTimer.current) clearTimeout(toastTimer.current);
-    },
-    []
-  );
-
-  const notify = (tone, text) => {
-    setToast({ tone, text });
-    if (toastTimer.current) clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToast(null), 4500);
-  };
-
-  const onSubmit = async (event) => {
-    event.preventDefault();
-    if (!district) {
-      notify('error', 'Pick a district before submitting.');
-      return;
-    }
-    if (submitting) return;
-
-    setSubmitting(true);
-    try {
-      const res = await fetch(REPORT_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          district,
-          gss: '',
-          feeder: '',
-          comment: comment.trim(),
-          severity: Number(severity),
-          reporter: 'web',
-        }),
-      });
-      if (!res.ok) throw new Error(`API responded ${res.status}`);
-      notify('ok', 'Report received — it now feeds the live pipeline.');
-      setComment('');
-    } catch (err) {
-      console.error('Failed to submit outage report:', err);
-      notify('error', 'Could not submit report. The report API may be offline.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="card" style={{ padding: 18 }}>
-      <div className="card-head">
-        <h2 className="card-title">Report an outage</h2>
-        <span className="card-sub">feeds the live pipeline</span>
-      </div>
-      <form className="form-grid" onSubmit={onSubmit}>
-        <div>
-          <label className="form-label" htmlFor="report-district">District</label>
-          <select
-            id="report-district"
-            className="control control-block"
-            value={district}
-            onChange={(e) => setDistrict(e.target.value)}
-            required
-          >
-            <option value="">Select a district…</option>
-            {districts.map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="form-label" htmlFor="report-severity">Severity</label>
-          <select
-            id="report-severity"
-            className="control control-block"
-            value={severity}
-            onChange={(e) => setSeverity(Number(e.target.value))}
-          >
-            {SEVERITY_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="form-label" htmlFor="report-comment">Comment</label>
-          <textarea
-            id="report-comment"
-            className="control control-block"
-            rows={3}
-            style={{ resize: 'vertical', fontFamily: 'inherit' }}
-            placeholder="Feeder, area, or what you are seeing…"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
-        </div>
-
-        <button
-          type="submit"
-          className="btn btn-accent"
-          disabled={submitting || !district}
-          style={{ justifyContent: 'center' }}
-        >
-          {submitting ? 'Submitting…' : '⚠️ Submit report'}
-        </button>
-        <span className="form-hint">
-          Sends <code className="inline-code">POST {REPORT_URL_LABEL}</code> with district and 1–5 severity.
-        </span>
-      </form>
-
-      {toast && (
-        <div className={toast.tone === 'error' ? 'toast toast-error' : 'toast'} role="status">
-          {toast.text}
-        </div>
-      )}
-    </div>
-  );
 }
 
 export default function LivePage() {

@@ -21,15 +21,15 @@ case "${1:-}" in
     "${lite[@]}" up -d app
     curl --retry 8 --retry-connrefused --retry-delay 1 -fsS localhost:3001/api/health | grep -q '"mode":"snapshot"'
     curl -fsS localhost:3001/api/mapdata | python3 -c 'import json,sys; assert json.load(sys.stdin)["source"] == "snapshot"'
-    "${full[@]}" stop spark-stream flink-submit airflow flink-taskmanager flink-jobmanager kafka-init kafka postgres
+    "${full[@]}" stop spark-stream flink-submit airflow flink-taskmanager flink-jobmanager kafka-init kafka
     ;;
-  full) "${full[@]}" up -d ;;
+  full) "${lite[@]}" stop refresh; "${full[@]}" up -d ;;
   kafka-on) "${full[@]}" up -d kafka kafka-init ;;
   kafka-off)
     curl -fsS localhost:3001/api/health | grep -q '"mode":"snapshot"' || { echo "Select snapshot mode first" >&2; exit 1; }
     "${full[@]}" stop kafka-init kafka ;;
   refresh)
     curl -fsS localhost:3001/api/health | grep -q '"mode":"snapshot"' || { echo "Use the full platform refresh endpoint in full mode" >&2; exit 1; }
-    "${lite[@]}" run --rm --no-deps -T refresh ;;
+    curl -fsS -X POST localhost:3001/api/refresh ;;
   *) echo "Usage: bash scripts/power-mode.sh snapshot|refresh|kafka-on|kafka-off|full" >&2; exit 2 ;;
 esac
