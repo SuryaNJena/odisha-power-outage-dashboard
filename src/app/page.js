@@ -11,46 +11,9 @@ import DateTimeKnob from './components/DateTimeKnob';
 import { useApiData } from './useApiData';
 import { BACKEND_MAPDATA_URL, DATA_URL, MAP_REPORTS_URL } from './config';
 
-const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-const HOUR_MS = 3600000;
-const DAY_MS = 86400000;
-
-// Outage dates look like "10-AUG-2026 10:00" → Date (minutes captured too).
-function parseDateTime(str) {
-  if (!str) return null;
-  const m = String(str).trim().match(/^(\d{1,2})-([A-Za-z]{3})-(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
-  if (!m) return null;
-  const month = MONTHS.indexOf(m[2].toUpperCase());
-  if (month === -1) return null;
-  const dt = new Date(Number(m[3]), month, Number(m[1]), m[4] ? Number(m[4]) : 0, m[5] ? Number(m[5]) : 0);
-  return Number.isNaN(dt.getTime()) ? null : dt;
-}
-
-// Truncate to the start of the current local hour.
-function floorHour(ms) {
-  const d = new Date(ms);
-  d.setMinutes(0, 0, 0);
-  return d.getTime();
-}
-// Truncate to the next local hour boundary.
-function ceilHour(ms) {
-  const d = new Date(ms);
-  d.setMinutes(0, 0, 0);
-  if (d.getTime() < ms) d.setHours(d.getHours() + 1);
-  return d.getTime();
-}
-
-// An outage is visible if it overlaps the selection window { start, end }.
-// For a point selection start === end, so this is the same as "live at ms".
-function inSelection(dot, sel) {
-  const s = parseDateTime(dot.start);
-  if (!s || s.getTime() > sel.end) return false;
-  if (dot.end) {
-    const e = parseDateTime(dot.end);
-    if (e && e.getTime() < sel.start) return false;
-  }
-  return true;
-}
+import {
+  DAY, busiestTime, ceilHour, centeredSelection, floorHour, outageInterval, overlaps, pointWithinWindow,
+} from './outageTimeline.mjs';
 
 const OdishaMap = dynamic(() => import('./components/OdishaMap'), {
   ssr: false,
@@ -85,66 +48,30 @@ export default function HomePage() {
   // Selection window { start, end }; start === end means a single point in time.
   const [selection, setSelection] = useState(null);
 
-  // Selectable range spans every outage start/end time, floored/ceiled to the hour.
-  const timeRange = useMemo(() => {
-    let min = Infinity;
-    let max = -Infinity;
-    for (const d of data.dots) {
-      const s = parseDateTime(d.start);
-      if (s) {
-        min = Math.min(min, s.getTime());
-        max = Math.max(max, s.getTime());
-      }
-      if (d.end) {
-        const e = parseDateTime(d.end);
-        if (e) {
-          min = Math.min(min, e.getTime());
-          max = Math.max(max, e.getTime());
-        }
-      }
+  const intervals = useMemo(() => data.dots.map(outageInterval).filter(Boolean), [data.dots]);
+  const initialTime = useMemo(() => {
+    const now = Date.now();
+    let min = now;
+    let max = now + DAY;
+    for (const { start, end } of intervals) {
+      min = Math.min(min, start);
+      max = Math.max(max, start, Number.isFinite(end) ? end : start);
     }
-    if (!Number.isFinite(min)) {
-      const now = Date.now();
-      return { min: now, max: now + DAY_MS };
-    }
-    return {
-      min: floorHour(min),
-      max: ceilHour(max),
-    };
-  }, [data.dots]);
+    return { min, max, center: busiestTime(intervals, now) };
+  }, [intervals]);
 
-  // Default to the hour with the most outages live (fallback: the latest hour).
-  const defaultMs = useMemo(() => {
-    let best = null;
-    let bestCount = -1;
-    for (let t = timeRange.min; t <= timeRange.max; t += HOUR_MS) {
-      const c = data.dots.filter((d) => inSelection(d, { start: t, end: t })).length;
-      if (c >= bestCount) {
-        bestCount = c;
-        best = t;
-      }
-    }
-    return best === null ? timeRange.max : best;
-  }, [data.dots, timeRange]);
+  const effectiveSelection = useMemo(
+    () => selection ?? centeredSelection(initialTime.center, DAY),
+    [selection, initialTime]
+  );
+  const center = (effectiveSelection.start + effectiveSelection.end) / 2;
+  // Include the current instant when Now is pressed, even with a stale feed.
+  const minMs = floorHour(Math.min(initialTime.min, center));
+  const maxMs = ceilHour(Math.max(initialTime.max, center));
 
-  // Keep the selection within range; default to the busiest hour (point mode).
-  // A window is at most 24 h and shrinks to the full range when it is shorter.
-  const effectiveSelection = useMemo(() => {
-    if (timeRange.max <= timeRange.min) return { start: timeRange.max, end: timeRange.max };
-    const raw = selection ?? { start: defaultMs, end: defaultMs };
-    if (raw.end > raw.start) {
-      const dur = Math.min(DAY_MS, timeRange.max - timeRange.min);
-      const start = Math.max(timeRange.min, Math.min(raw.start, timeRange.max - dur));
-      return { start, end: start + dur };
-    }
-    const ms = Math.max(timeRange.min, Math.min(timeRange.max, raw.start));
-    return { start: ms, end: ms };
-  }, [timeRange, selection, defaultMs]);
-
-  // Outages that overlap the selected window (a point when start === end).
   const visibleDots = useMemo(
-    () => data.dots.filter((d) => inSelection(d, effectiveSelection)),
-    [data.dots, effectiveSelection]
+    () => intervals.filter((interval) => overlaps(interval, effectiveSelection)).map(({ dot }) => dot),
+    [intervals, effectiveSelection]
   );
 
   // Recompute district heat counts for the selected hour.
@@ -226,8 +153,12 @@ export default function HomePage() {
           <h1 id="map-heading" className="visually-hidden">Odisha outage map</h1>
           <div className="map-toolbar">
             <p className="map-summary">
-              <strong>{loading ? '…' : visibleDots.length}</strong> {visibleDots.length === 1 ? 'outage' : 'outages'} in{' '}
-              <strong>{loading ? '…' : districtCounts.length}</strong> {districtCounts.length === 1 ? 'district' : 'districts'}
+              {!loading && visibleDots.length === 0 ? 'No official outages for this selection' : (
+                <>
+                  <strong>{loading ? '…' : visibleDots.length}</strong> {visibleDots.length === 1 ? 'outage' : 'outages'} in{' '}
+                  <strong>{loading ? '…' : districtCounts.length}</strong> {districtCounts.length === 1 ? 'district' : 'districts'}
+                </>
+              )}
             </p>
             <div className="map-layers" role="group" aria-label="Map layers">
               <label><input type="checkbox" checked={showDots} onChange={e => setShowDots(e.target.checked)} />Locations</label>
@@ -242,12 +173,13 @@ export default function HomePage() {
         </section>
 
         {/* Date-time dial: exact hourly selection, adaptive tick density, zoomable */}
-        {!loading && Number.isFinite(timeRange.min) && (
+        {!loading && (
           <DateTimeKnob
-              minMs={timeRange.min}
-              maxMs={timeRange.max}
+              minMs={minMs}
+              maxMs={maxMs}
               selection={effectiveSelection}
               onChange={setSelection}
+              onPoint={() => setSelection(centeredSelection(pointWithinWindow(intervals, effectiveSelection), 0))}
           />
         )}
 

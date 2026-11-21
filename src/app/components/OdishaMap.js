@@ -257,14 +257,6 @@ function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHe
     const leaf = leafRef.current;
     if (!map || !leaf) return;
 
-    const counts = Object.fromEntries(districts.map((d) => [d.name.toLowerCase(), d.value]));
-    const values = districts.map((d) => d.value);
-    const min = values.length ? Math.min(...values) : 0;
-    const max = values.length ? Math.max(...values) : 1;
-    const mapPath = cssVar('--map-path');
-    const mapPathHover = cssVar('--map-path-hover');
-    const mapStroke = cssVar('--map-stroke');
-
     const key =
       Object.keys(topo.objects).find((k) => k.toLowerCase().includes('district')) ||
       Object.keys(topo.objects)[0];
@@ -274,33 +266,19 @@ function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHe
     );
     const collection = { type: 'FeatureCollection', features };
 
-    const districtStyle = (feature) => {
-      const v = counts[(feature.properties?.name || '').toLowerCase()];
-      return {
-        fillColor: v ? getColor(v, min, max, dark) : mapPath,
-        fillOpacity: dark ? 0.4 : 0.45,
-        color: mapStroke,
-        weight: 0.6,
-      };
-    };
-
-    if (districtLayerRef.current) map.removeLayer(districtLayerRef.current);
-
     const layer = leaf.geoJSON(collection, {
-      style: districtStyle,
       onEachFeature(feature, lyr) {
         const name = feature.properties?.name || 'Unknown district';
-        const v = counts[name.toLowerCase()];
-        lyr.bindTooltip(districtTooltip(name, v), {
+        lyr.bindTooltip(districtTooltip(name, 0), {
           direction: 'top',
           offset: [0, -6],
           className: 'odisha-tooltip',
         });
         lyr.on('mouseover', () => {
-          lyr.setStyle({ fillColor: mapPathHover, fillOpacity: 0.9 });
+          lyr.setStyle({ fillColor: cssVar('--map-path-hover'), fillOpacity: 0.9 });
           lyr.bringToFront();
         });
-        lyr.on('mouseout', () => lyr.setStyle(districtStyle(feature)));
+        lyr.on('mouseout', () => layer.resetStyle(lyr));
       },
     });
 
@@ -309,9 +287,39 @@ function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHe
       hasFittedRef.current = true;
       map.fitBounds(bounds, { ...FIT_OPTIONS, animate: false });
     }
-    if (showHeatmap) layer.addTo(map);
     districtLayerRef.current = layer;
     if (fitButtonRef.current) fitButtonRef.current.disabled = !bounds.isValid();
+    return () => {
+      map.removeLayer(layer);
+      districtLayerRef.current = null;
+    };
+  }, [ready, topo]);
+
+  // Recolor the existing polygons in place when the selected window changes.
+  useEffect(() => {
+    const layer = districtLayerRef.current;
+    if (!layer) return;
+    const counts = new Map(districts.map((district) => [district.name.toLowerCase(), district.value]));
+    const values = districts.map((district) => district.value);
+    const min = values.length ? Math.min(...values) : 0;
+    const max = values.length ? Math.max(...values) : 1;
+    const neutral = cssVar('--map-path');
+    const stroke = cssVar('--map-stroke');
+    const style = (feature) => {
+      const count = counts.get(feature.properties?.name?.toLowerCase());
+      return {
+        fillColor: count ? getColor(count, min, max, dark) : neutral,
+        fillOpacity: dark ? 0.4 : 0.45,
+        color: stroke,
+        weight: 0.6,
+      };
+    };
+    layer.options.style = style;
+    layer.setStyle(style);
+    layer.eachLayer((polygon) => {
+      const name = polygon.feature.properties?.name || 'Unknown district';
+      polygon.setTooltipContent(districtTooltip(name, counts.get(name.toLowerCase()) || 0));
+    });
   }, [ready, topo, dark, districts]);
 
   // Toggle the district heat layer visibility. Dots live in a higher pane, so they
@@ -325,7 +333,7 @@ function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHe
     } else if (map.hasLayer(layer)) {
       map.removeLayer(layer);
     }
-  }, [ready, showHeatmap, dark, districts, topo]);
+  }, [ready, showHeatmap, topo]);
 
   // Outage dots: static blue markers (no animation), same data + tooltip
   // content as the old canvas renderer.
@@ -430,7 +438,7 @@ function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHe
         {Array.isArray(reports) && showDots && (
           <div className="map-legend-dots">
             <span><i className="map-dot-key official" aria-hidden="true" /> Official outages</span>
-            <span><i className="map-dot-key community" aria-hidden="true" /> Community reports · 24h</span>
+            <span title="Reports from the past 24 hours, independent of the official outage timeline"><i className="map-dot-key community" aria-hidden="true" /> Community reports · last 24h</span>
           </div>
         )}
       </div>

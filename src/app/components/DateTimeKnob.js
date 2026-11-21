@@ -2,21 +2,16 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-const HOUR = 3600000;
-const DAY = 24 * HOUR;
+import { HOUR, DAY, IST_OFFSET, centeredSelection, snapHour } from '../outageTimeline.mjs';
+
+const TIME_ZONE = 'Asia/Kolkata';
 const ARC = Math.PI * 0.46;
 const steps = [1, 2, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 10080, 20160, 43200, 129600, 525600];
-const date = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
-const day = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
-const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+const date = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric', timeZone: TIME_ZONE });
+const day = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', timeZone: TIME_ZONE });
+const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: TIME_ZONE });
 const stamp = ms => date.format(ms) + ' ' + clock.format(ms);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-
-function snap(ms) {
-  const d = new Date(ms);
-  d.setHours(d.getHours() + (d.getMinutes() >= 30 ? 1 : 0), 0, 0, 0);
-  return +d;
-}
 
 function drumScale(center, span, width, min, max) {
   // Equal time intervals occupy equal angles on the drum. Project their
@@ -26,7 +21,7 @@ function drumScale(center, span, width, min, max) {
   const project = ms => width / 2 + radius * Math.sin(clamp(angle(ms), -ARC, ARC));
   const target = span / 60000 / Math.max(8, width / 9);
   const step = (steps.find(minutes => minutes >= target) ?? Math.ceil(target)) * 60000;
-  const origin = new Date(center).getTimezoneOffset() * 60000;
+  const origin = -IST_OFFSET;
   const ticks = [];
   let lastRight = 0;
   const first = Math.ceil((center - span / 2 - origin) / step);
@@ -40,8 +35,7 @@ function drumScale(center, span, width, min, max) {
     const available = ms >= min && ms <= max;
     let label = '';
     if (available && face > 0.32) {
-      const d = new Date(ms);
-      const midnight = d.getHours() === 0 && d.getMinutes() === 0;
+      const midnight = (ms + IST_OFFSET) % DAY === 0;
       const candidate = step >= DAY || midnight ? day.format(ms) : clock.format(ms);
       const half = candidate.length * 3.5;
       // Reserve space for the next major graduation before adding a minor label.
@@ -61,12 +55,12 @@ function drumScale(center, span, width, min, max) {
   return { ticks, project };
 }
 
-export default function DateTimeKnob({ minMs, maxMs, selection, onChange }) {
+export default function DateTimeKnob({ minMs, maxMs, selection, onChange, onPoint }) {
   const range = Math.max(1, maxMs - minMs);
   const duration = selection.end - selection.start;
   const selected = (selection.start + selection.end) / 2;
-  const lo = minMs + duration / 2;
-  const hi = maxMs - duration / 2;
+  const lo = minMs;
+  const hi = maxMs;
   const [span, setSpan] = useState(range);
   const [width, setWidth] = useState(640);
   const [preview, setPreview] = useState(null);
@@ -103,8 +97,7 @@ export default function DateTimeKnob({ minMs, maxMs, selection, onChange }) {
   }, [minimum, range]);
 
   function select(c, length = duration) {
-    const start = clamp(c - length / 2, minMs, maxMs - length);
-    onChange({ start, end: start + length });
+    onChange(centeredSelection(clamp(c, lo, hi), length));
   }
   function startDrag(e) {
     if (drag.current || e.button !== 0 || !e.isPrimary) return;
@@ -142,7 +135,7 @@ export default function DateTimeKnob({ minMs, maxMs, selection, onChange }) {
     frame.current = 0;
     drag.current = null;
     setPreview(null);
-    select(snap(c));
+    select(snapHour(c));
   }
   function keyDown(e) {
     const values = { ArrowLeft: center - HOUR, ArrowUp: center - HOUR,
@@ -150,21 +143,21 @@ export default function DateTimeKnob({ minMs, maxMs, selection, onChange }) {
       PageDown: center + DAY, Home: lo, End: hi };
     if (!Object.hasOwn(values, e.key)) return;
     e.preventDefault();
-    select(e.key === 'Home' || e.key === 'End' ? values[e.key] : snap(values[e.key]));
+    select(e.key === 'Home' || e.key === 'End' ? values[e.key] : snapHour(values[e.key]));
   }
 
   const { ticks, project } = drumScale(center, span, width, minMs, maxMs);
   const left = project(center - duration / 2);
   const right = project(center + duration / 2);
   const readout = duration ? stamp(center - duration / 2) + ' – ' + stamp(center + duration / 2) : stamp(center);
-  return <section className="card dtk" aria-label="Outage timeline">
+  return <section className="card dtk" aria-label="Official outage timeline">
     <div className="dtk-bar">
       <div className="dtk-actions" role="group" aria-label="Time selection mode">
-        <button aria-pressed={!duration} onClick={() => select(snap(center), 0)}>Point</button>
-        <button aria-pressed={!!duration} onClick={() => select(center, Math.min(DAY, maxMs - minMs))}>24 h</button>
-        <button onClick={() => select(snap(Date.now()))}>Now</button>
+        <button type="button" aria-pressed={!duration} onClick={onPoint}>Point</button>
+        <button type="button" aria-pressed={!!duration} onClick={() => select(center, DAY)}>24 h</button>
+        <button type="button" onClick={() => onChange(centeredSelection(Date.now(), duration))}>Now</button>
       </div>
-      <strong className="dtk-readout">{readout}</strong>
+      <strong className="dtk-readout">{readout} IST</strong>
       <div className="dtk-actions">
         <button aria-label="Zoom out" disabled={span >= range} onClick={() => setSpan(v => Math.min(range, v * 2.2))}>−</button>
         <button aria-label="Zoom in" disabled={span <= minimum} onClick={() => setSpan(v => Math.max(minimum, v / 2.2))}>+</button>
@@ -172,7 +165,7 @@ export default function DateTimeKnob({ minMs, maxMs, selection, onChange }) {
     </div>
     <svg ref={svg} className="dtk-drum" viewBox={`0 0 ${width} 50`} role="slider" tabIndex={0}
       aria-label="Outage date and time" aria-valuemin={lo} aria-valuemax={hi} aria-valuenow={center}
-      aria-valuetext={readout} aria-describedby="timeline-help" onPointerDown={startDrag} onPointerMove={move}
+      aria-valuetext={readout + ' IST'} aria-describedby="timeline-help" onPointerDown={startDrag} onPointerMove={move}
       onPointerUp={finish} onPointerCancel={finish} onLostPointerCapture={finish} onKeyDown={keyDown}>
       <title>Drag to rotate · Scroll to zoom</title>
       {duration > 0 && <rect x={left} width={right-left} height="48" fill="var(--accent-soft)" />}
