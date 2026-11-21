@@ -434,7 +434,14 @@ func (s *Store) MapReports(ctx context.Context) ([]MapReport, error) {
             SELECT district, coalesce(area, '') AS area, regexp_replace(lower(district), '[^a-z0-9]+', '', 'g') AS district_key,
                    count(*) AS reports, max(reported_at) AS latest_at
             FROM raw.user_reports
-            WHERE reported_at >= now() - interval '24 hours'
+            WHERE reported_at > now() - interval '24 hours'
+              AND reported_at > now() - CASE severity
+                  WHEN 1 THEN interval '15 minutes'
+                  WHEN 2 THEN interval '1 hour'
+                  WHEN 4 THEN interval '12 hours'
+                  WHEN 5 THEN interval '24 hours'
+                  ELSE interval '4 hours'
+              END
               AND (source = 'web-outage' OR (
                   source = 'web' AND coalesce(trim(gss), '') = '' AND coalesce(trim(feeder), '') = ''
               ))

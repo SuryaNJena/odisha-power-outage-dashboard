@@ -44,8 +44,10 @@ coordinates stay in the browser. The report API resolves a chosen or typed
 locality within the selected district and stores its standard name when known.
 Unmatched area text remains in PostgreSQL as submitted.
 
-The public map reads the last 24 hours of community reports directly from
-PostgreSQL in either mode. It groups known localities and subdistricts at their
+The public map reads community reports directly from PostgreSQL. Each report
+ages out relative to submission: 15 minutes for severity 1, 1 hour for severity
+2, 4 hours for severity 3, 12 hours for severity 4, and 24 hours for severity 5.
+This affects map visibility only. Reports remain stored. It groups known localities and subdistricts at their
 reference points and falls back to the district center for unmatched reports.
 Only reference labels, approximate coordinates, counts, and the latest report
 time are returned. A confirmed save reloads the layer and visible maps check

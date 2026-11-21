@@ -395,7 +395,7 @@ function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHe
         className: 'community-report-marker',
       }).bindTooltip(
         `<div class="tt-title">${escapeHtml(area ? area + ' · ' + district : district)}</div>
-         <div class="tt-sub">${count} unverified community report${count === 1 ? '' : 's'} (last 24h)</div>
+         <div class="tt-sub">${count} unverified community report${count === 1 ? '' : 's'}</div>
          <div class="tt-sub">Latest report: ${escapeHtml(latest)} IST</div>
          <div class="tt-sub">${area ? 'Approximate area location' : 'Approximate district location'}</div>`,
         { direction: 'auto', className: 'odisha-tooltip' }
@@ -438,7 +438,7 @@ function OdishaMap({ reports, dots = [], districts = [], showDots = true, showHe
         {Array.isArray(reports) && showDots && (
           <div className="map-legend-dots">
             <span><i className="map-dot-key official" aria-hidden="true" /> Official outages</span>
-            <span title="Reports from the past 24 hours, independent of the official outage timeline"><i className="map-dot-key community" aria-hidden="true" /> Community reports · last 24h</span>
+            <span title="Reports stay visible for 15 minutes to 24 hours depending on severity, independent of the official outage timeline"><i className="map-dot-key community" aria-hidden="true" /> Community reports</span>
           </div>
         )}
       </div>

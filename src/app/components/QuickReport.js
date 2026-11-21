@@ -12,11 +12,11 @@ export const FALLBACK_DISTRICTS = [
 ];
 
 const SEVERITY_OPTIONS = [
-  [1, '1 · Minor flicker'],
-  [2, '2 · Brief interruption'],
-  [3, '3 · Power out (default)'],
-  [4, '4 · Long outage'],
-  [5, '5 · Extended outage'],
+  [1, '1 · Minor flicker', '15 min'],
+  [2, '2 · Brief interruption', '1 h'],
+  [3, '3 · Power out (default)', '4 h'],
+  [4, '4 · Long outage', '12 h'],
+  [5, '5 · Extended outage', '24 h'],
 ];
 
 export default function QuickReport({ districts = FALLBACK_DISTRICTS, onSaved }) {
@@ -206,8 +206,8 @@ export default function QuickReport({ districts = FALLBACK_DISTRICTS, onSaved })
             value={severity}
             onChange={(e) => setSeverity(Number(e.target.value))}
           >
-            {SEVERITY_OPTIONS.map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
+            {SEVERITY_OPTIONS.map(([value, label, visibility]) => (
+              <option key={value} value={value}>{label} · {visibility} on map</option>
             ))}
           </select>
         </div>
